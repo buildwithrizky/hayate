@@ -32,6 +32,11 @@
           <span class="dot"></span>
           <span>connecting</span>
         </div>
+        <button id="toggle-ai-btn" class="btn btn-icon" title="Toggle AI Assistant Panel">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+          </svg>
+        </button>
         <button id="toggle-right-sidebar-btn" class="btn btn-icon" title="Toggle Explorer & Git Sidebar">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect width="18" height="18" x="3" y="3" rx="2"/>
@@ -101,6 +106,83 @@
           </div>
         </div>
       </main>
+
+      <!-- AI Assistant Split Panel -->
+      <aside id="ai-panel" class="ai-panel">
+        <div class="ai-panel-header">
+          <div class="ai-header-left">
+            <span class="ai-status-indicator" id="ai-status-indicator" title="AI Agent Idle"></span>
+            <span class="ai-header-title">AI ASSISTANT</span>
+            <select id="ai-model-select" class="ai-model-select" title="Select Model">
+              <option value="anthropic/claude-3-7-sonnet">Claude 3.7 Sonnet</option>
+              <option value="anthropic/claude-3-5-sonnet">Claude 3.5 Sonnet</option>
+              <option value="openai/gpt-4o">GPT-4o</option>
+              <option value="deepseek/deepseek-chat">DeepSeek V3</option>
+              <option value="deepseek/deepseek-r1">DeepSeek R1</option>
+            </select>
+          </div>
+          <div class="ai-header-right">
+            <button id="ai-clear-chat-btn" class="btn btn-icon btn-xs" title="Clear Chat History">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/>
+              </svg>
+            </button>
+            <button id="ai-close-btn" class="btn btn-icon btn-xs" title="Close AI Panel">&times;</button>
+          </div>
+        </div>
+
+        <!-- Chat History -->
+        <div id="ai-chat-messages" class="ai-chat-messages">
+          <div class="ai-welcome-message">
+            <div class="ai-welcome-badge">⚡ Native ADE Assistant</div>
+            <h3>How can I assist your workspace today?</h3>
+            <p>I can run commands, inspect files, apply edits, and help debug errors in realtime.</p>
+          </div>
+        </div>
+
+        <!-- Prompt Input Area -->
+        <div class="ai-input-container">
+          <!-- Attachment Preview Bar -->
+          <div id="ai-attachment-bar" class="ai-attachment-bar" style="display:none;"></div>
+
+          <div class="ai-textarea-wrapper">
+            <textarea
+              id="ai-prompt-input"
+              class="ai-prompt-input"
+              rows="2"
+              placeholder="Ask AI assistant... (Enter to send, Shift+Enter for newline, paste images)"
+              spellcheck="false"
+            ></textarea>
+          </div>
+
+          <!-- Action Bar -->
+          <div class="ai-action-bar">
+            <div class="ai-action-left">
+              <label class="btn btn-xs btn-subtle ai-attach-label" title="Attach Image">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l7.88-7.88"/>
+                </svg>
+                <span>Attach</span>
+                <input type="file" id="ai-file-input" accept="image/*" multiple style="display:none;" />
+              </label>
+              <span id="ai-status-text" class="ai-status-text">Ready</span>
+            </div>
+            <div class="ai-action-right">
+              <button id="ai-stop-btn" class="btn btn-xs btn-danger" style="display:none;" title="Cancel Streaming">
+                <span class="ai-stop-square"></span>
+                <span>Stop</span>
+              </button>
+              <button id="ai-send-btn" class="btn btn-xs btn-primary ai-send-btn" title="Send Prompt (Enter)">
+                <span>Send</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m22 2-7 20-4-9-9-4Z"/>
+                  <path d="M22 2 11 13"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </aside>
 
       <!-- Right Sidebar: Explorer & Source Control ala Orca -->
       <aside id="right-sidebar" class="right-sidebar">

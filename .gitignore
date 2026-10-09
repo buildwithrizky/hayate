@@ -1,10 +1,10 @@
-node_modules/
-dist/
-client/node_modules/
+target/
+src-tauri/target/
 .DS_Store
 *.log
-
 .env
 .env.*
 !.env.example
 workspaces.json
+image*.png
+.ade/

@@ -89,7 +89,10 @@ pub fn resolve_public_dir<R: tauri::Runtime>(app_handle: Option<&tauri::AppHandl
     PathBuf::from("../public")
 }
 
-pub fn create_router<R: tauri::Runtime>(state: AppState, app_handle: Option<&tauri::AppHandle<R>>) -> Router {
+pub fn create_router<R: tauri::Runtime>(
+    state: AppState,
+    app_handle: Option<&tauri::AppHandle<R>>,
+) -> Router {
     let public_dir = resolve_public_dir(app_handle);
     log::info!("Serving static files from: {}", public_dir.display());
 

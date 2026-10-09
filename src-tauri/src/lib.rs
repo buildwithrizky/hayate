@@ -38,7 +38,9 @@ pub fn run() {
                     if let Ok(Ok(stream)) = tokio::time::timeout(
                         std::time::Duration::from_millis(100),
                         tokio::net::TcpStream::connect(format!("127.0.0.1:{port}")),
-                    ).await {
+                    )
+                    .await
+                    {
                         drop(stream);
                         log::info!("Embedded Axum HTTP server confirmed listening on port {port}");
                         return;

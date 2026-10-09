@@ -1,5 +1,12 @@
 # Agent Guidelines - ade-harness
 
+## Wajib Baca & Patuhi (Mandatory References)
+Sebelum menulis kode atau membuat perubahan arsitektur/UI, semua agent wajib membaca dan mematuhi panduan berikut:
+- [`ARCHITECTURE.md`](ARCHITECTURE.md): Aturan arsitektur sistem, pembagian modul, alur data, dan kontrak integrasi.
+- [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md): Standar visual, token CSS, komponen UI, konsistensi antarmuka.
+
+Dilarang membuat perubahan arsitektur atau antarmuka tanpa menyelaraskan ke dua dokumen di atas.
+
 ## Technical Rules
 
 ### Frontend (Native ES Modules)

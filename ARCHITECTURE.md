@@ -1,4 +1,4 @@
-# Architecture Blueprint - web-ade-harness
+# Architecture Blueprint - Hayate
 
 ## 1. System Overview
 
@@ -45,7 +45,7 @@ public/
 ### Module Rules
 - `api.js`: single source of truth HTTP/WS transport.
 - `terminal.js`: lifecycle terminal dan resize handler.
-- `agent.js`: interaksi ADE agent, render chat & stream output.
+- `agent.js`: interaksi Hayate agent, render chat & stream output.
 - `workspace.js`: state file explorer & editor view.
 - No monolith: dilarang tumpuk semua logic di satu file >3000 baris.
 

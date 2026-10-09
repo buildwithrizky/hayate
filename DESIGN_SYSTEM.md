@@ -1,4 +1,4 @@
-# DESIGN_SYSTEM.md — Sokudo Design System Tokens
+# Hayate Design System — Tokens
 
 Dokumentasi token aktif dan aturan styling Sokudo (`https://sokudo.dev`) di `public/style.css`.
 

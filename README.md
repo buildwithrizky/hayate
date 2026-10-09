@@ -1,6 +1,6 @@
-# ADE Desktop Harness
+# Hayate Desktop Harness
 
-Desktop harness untuk Autonomous Development Environment (ADE) berbasis Tauri v2 dan embedded HTTP/WebSocket server.
+Desktop harness untuk Autonomous Development Environment (Hayate) berbasis Tauri v2 dan embedded HTTP/WebSocket server.
 
 ## Tech Stack
 

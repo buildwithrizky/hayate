@@ -1,4 +1,4 @@
-# Agent Guidelines - ade-harness
+# Agent Guidelines - Hayate
 
 ## Wajib Baca & Patuhi (Mandatory References)
 Sebelum menulis kode atau membuat perubahan arsitektur/UI, semua agent wajib membaca dan mematuhi panduan berikut:

@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "ade",
+  "productName": "Hayate",
   "version": "0.1.0",
-  "identifier": "com.ade.harness",
+  "identifier": "com.hayate.app",
   "build": {
     "frontendDist": "http://localhost:3456",
     "devUrl": "http://localhost:3456",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "ADE Harness",
+        "title": "Hayate",
         "width": 1440,
         "height": 900,
         "resizable": true,

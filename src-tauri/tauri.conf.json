@@ -3,6 +3,14 @@
   "productName": "Hayate",
   "version": "0.1.0",
   "identifier": "com.hayate.app",
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/buildwithrizky/web-ade-harness/releases/latest/download/latest.json"
+      ],
+      "pubkey": ""
+    }
+  },
   "build": {
     "frontendDist": "http://localhost:3456",
     "devUrl": "http://localhost:3456",

@@ -48,7 +48,10 @@ Dokumentasi token aktif dan aturan styling Sokudo (`https://sokudo.dev`) di `pub
 ### Radii (Sokudo Shapes)
 | Token | Nilai | Penggunaan |
 |---|---|---|
-| `--radius-sm` | `6px` | Tag, badge kecil, scrollbar thumb |
+| `--radius-xs` | `2px` | Micro-elements, inline badges kecil |
+| `--radius-sm` | `4px` | Tag, badge kecil, scrollbar thumb, item buttons |
+| `--radius-md` | `6px` | Dropdown menu, code block pre, tab selector |
+| `--radius-lg` | `8px` | Container subtle, frame sedang |
 | `--radius-input` | `8px` | Form input, prompt box, search box (8px - 10px) |
 | `--radius-card` | `14px` | Modal, card container, preview frame (14px - 16px) |
 | `--radius-pill` | `9999px` | Button pill, status pill, tabs pill Sokudo |

@@ -14,16 +14,16 @@ const TERM_THEME = {
   green: "#10b981",
   yellow: "#f59e0b",
   blue: "#0091ff",
-  magenta: "#a855f7",
+  magenta: "#00d2ff",
   cyan: "#00d2ff",
   white: "#f5f5f7",
   brightBlack: "#5c5c66",
-  brightRed: "#fb7185",
-  brightGreen: "#34d399",
-  brightYellow: "#fbbf24",
-  brightBlue: "#38bdf8",
-  brightMagenta: "#c084fc",
-  brightCyan: "#67e8f9",
+  brightRed: "#f43f5e",
+  brightGreen: "#10b981",
+  brightYellow: "#f59e0b",
+  brightBlue: "#1a9eff",
+  brightMagenta: "#00d2ff",
+  brightCyan: "#00d2ff",
   brightWhite: "#ffffff"
 };
 
@@ -59,12 +59,6 @@ class StateManager {
     this.gitSectionsCollapsed = new Set();
     this.gitTreeCollapsed = new Set(); // Stores collapsed tree folder keys
 
-    // AI Assistant state
-    this.isAiPanelOpen = true;
-    this.aiMessages = [];
-    this.aiAttachments = []; // Array of { name, dataUrl, mime }
-    this.aiAbortController = null;
-    this.isAiStreaming = false;
   }
 
   // Language helper for PrismJS syntax highlighting
@@ -1638,7 +1632,7 @@ class StateManager {
         badge.textContent = tab.pid ? `PID ${tab.pid}` : "LIVE";
         badge.style.background = "rgba(16, 185, 129, 0.15)";
         badge.style.borderColor = "rgba(16, 185, 129, 0.4)";
-        badge.style.color = "#34d399";
+        badge.style.color = "var(--accent-emerald)";
       } else {
         badge.textContent = "SHELL OFF";
         badge.style.background = "var(--bg-subtle)";
@@ -1647,24 +1641,24 @@ class StateManager {
       }
     } else if (tab && tab.type === "browser") {
       badge.textContent = "BROWSER";
-      badge.style.background = "rgba(59, 130, 246, 0.15)";
-      badge.style.borderColor = "rgba(59, 130, 246, 0.4)";
-      badge.style.color = "#60a5fa";
+      badge.style.background = "rgba(0, 145, 255, 0.15)";
+      badge.style.borderColor = "rgba(0, 145, 255, 0.4)";
+      badge.style.color = "var(--accent-blue)";
     } else if (tab && tab.type === "markdown") {
       badge.textContent = tab.isEditMode ? "MD EDIT" : "MD PREVIEW";
-      badge.style.background = "rgba(168, 85, 247, 0.15)";
-      badge.style.borderColor = "rgba(168, 85, 247, 0.4)";
-      badge.style.color = "#c084fc";
+      badge.style.background = "rgba(0, 210, 255, 0.15)";
+      badge.style.borderColor = "rgba(0, 210, 255, 0.4)";
+      badge.style.color = "var(--accent-cyan)";
     } else if (tab && tab.type === "editor") {
       badge.textContent = tab.isDirty ? "UNSAVED" : "EDITOR";
-      badge.style.background = tab.isDirty ? "rgba(251, 191, 36, 0.15)" : "var(--bg-subtle)";
-      badge.style.borderColor = tab.isDirty ? "rgba(251, 191, 36, 0.4)" : "var(--border-subtle)";
-      badge.style.color = tab.isDirty ? "#fbbf24" : "var(--text-muted)";
+      badge.style.background = tab.isDirty ? "rgba(245, 158, 11, 0.15)" : "var(--bg-subtle)";
+      badge.style.borderColor = tab.isDirty ? "rgba(245, 158, 11, 0.4)" : "var(--border-subtle)";
+      badge.style.color = tab.isDirty ? "var(--accent-amber)" : "var(--text-muted)";
     } else if (tab && tab.type === "diff") {
       badge.textContent = "DIFF";
-      badge.style.background = "rgba(56, 189, 248, 0.15)";
-      badge.style.borderColor = "rgba(56, 189, 248, 0.4)";
-      badge.style.color = "#38bdf8";
+      badge.style.background = "rgba(0, 210, 255, 0.15)";
+      badge.style.borderColor = "rgba(0, 210, 255, 0.4)";
+      badge.style.color = "var(--accent-cyan)";
     } else {
       badge.textContent = "NO TAB";
       badge.style.background = "var(--bg-subtle)";
@@ -2889,346 +2883,6 @@ class StateManager {
     }, 4000);
   }
 
-  // ==========================================================================
-  // AI Chat Assistant Methods
-  // ==========================================================================
-  toggleAiPanel(forceState) {
-    const panel = document.getElementById("ai-panel");
-    if (!panel) return;
-    if (typeof forceState === "boolean") {
-      this.isAiPanelOpen = forceState;
-    } else {
-      this.isAiPanelOpen = !this.isAiPanelOpen;
-    }
-    if (this.isAiPanelOpen) {
-      panel.classList.remove("collapsed");
-    } else {
-      panel.classList.add("collapsed");
-    }
-    setTimeout(() => {
-      window.dispatchEvent(new Event("resize"));
-      if (this.activeTabId) this.fitTerminal(this.activeTabId);
-    }, 180);
-  }
-
-  setAiStatus(status, text) {
-    const indicator = document.getElementById("ai-status-indicator");
-    const statusTextEl = document.getElementById("ai-status-text");
-    if (indicator) {
-      indicator.className = `ai-status-indicator ${status || ""}`;
-    }
-    if (statusTextEl && text) {
-      statusTextEl.textContent = text;
-    }
-  }
-
-  clearAiChat() {
-    if (this.isAiStreaming) {
-      this.cancelAiStreaming();
-    }
-    this.aiMessages = [];
-    const container = document.getElementById("ai-chat-messages");
-    if (container) {
-      container.innerHTML = `
-        <div class="ai-welcome-message">
-          <div class="ai-welcome-badge">⚡ Native ADE Assistant</div>
-          <h3>How can I assist your workspace today?</h3>
-          <p>I can run commands, inspect files, apply edits, and help debug errors in realtime.</p>
-        </div>
-      `;
-    }
-    this.setAiStatus("", "Ready");
-  }
-
-  addAiAttachment(file) {
-    if (!file || !file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataUrl = e.target.result;
-      this.aiAttachments.push({
-        name: file.name || "pasted-image.png",
-        dataUrl,
-        mime: file.type
-      });
-      this.renderAiAttachmentBar();
-    };
-    reader.readAsDataURL(file);
-  }
-
-  removeAiAttachment(index) {
-    this.aiAttachments.splice(index, 1);
-    this.renderAiAttachmentBar();
-  }
-
-  renderAiAttachmentBar() {
-    const bar = document.getElementById("ai-attachment-bar");
-    if (!bar) return;
-    if (this.aiAttachments.length === 0) {
-      bar.style.display = "none";
-      bar.innerHTML = "";
-      return;
-    }
-    bar.style.display = "flex";
-    bar.innerHTML = this.aiAttachments.map((att, idx) => `
-      <div class="ai-attach-chip" data-idx="${idx}">
-        <img class="ai-attach-thumb" src="${att.dataUrl}" alt="${this.escapeHtml(att.name)}" />
-        <span class="ai-attach-name" title="${this.escapeHtml(att.name)}">${this.escapeHtml(att.name)}</span>
-        <button type="button" class="ai-attach-remove" data-idx="${idx}" title="Remove image">&times;</button>
-      </div>
-    `).join("");
-
-    bar.querySelectorAll(".ai-attach-remove").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const idx = parseInt(btn.dataset.idx, 10);
-        this.removeAiAttachment(idx);
-      });
-    });
-  }
-
-  cancelAiStreaming() {
-    if (this.aiAbortController) {
-      this.aiAbortController.abort();
-      this.aiAbortController = null;
-    }
-    this.setAiStreamingState(false);
-    this.setAiStatus("", "Cancelled");
-  }
-
-  setAiStreamingState(isStreaming) {
-    this.isAiStreaming = isStreaming;
-    const stopBtn = document.getElementById("ai-stop-btn");
-    const sendBtn = document.getElementById("ai-send-btn");
-    const indicator = document.getElementById("ai-status-indicator");
-
-    if (stopBtn) stopBtn.style.display = isStreaming ? "inline-flex" : "none";
-    if (sendBtn) {
-      sendBtn.disabled = isStreaming;
-      sendBtn.style.opacity = isStreaming ? "0.6" : "1";
-    }
-    if (indicator) {
-      if (isStreaming) {
-        indicator.classList.add("busy");
-      } else {
-        indicator.classList.remove("busy");
-      }
-    }
-  }
-
-  scrollAiChatToBottom() {
-    const container = document.getElementById("ai-chat-messages");
-    if (container) {
-      container.scrollTop = container.scrollHeight;
-    }
-  }
-
-  formatToolIcon(toolName = "") {
-    const t = toolName.toLowerCase();
-    if (t.includes("bash") || t.includes("sh") || t.includes("command")) return "⚡";
-    if (t.includes("read") || t.includes("cat") || t.includes("view")) return "📖";
-    if (t.includes("edit") || t.includes("write") || t.includes("patch")) return "✏️";
-    if (t.includes("search") || t.includes("find") || t.includes("grep")) return "🔍";
-    return "🔧";
-  }
-
-  renderToolCallBlock(toolCall) {
-    const icon = this.formatToolIcon(toolCall.name);
-    const title = `${icon} ${toolCall.name}: ${toolCall.args || ""}`;
-    const statusClass = toolCall.status || "running";
-    const statusLabel = toolCall.status === "success" ? "Done" : toolCall.status === "error" ? "Failed" : "Running...";
-
-    return `
-      <div class="ai-tool-call ${statusClass} ${toolCall.open ? "open" : ""}" id="tool-call-${toolCall.id}">
-        <div class="ai-tool-header">
-          <span class="ai-tool-title">${this.escapeHtml(title)}</span>
-          <span class="ai-tool-status">${statusLabel}</span>
-        </div>
-        <div class="ai-tool-body">${this.escapeHtml(toolCall.output || toolCall.args || "(no output)")}</div>
-      </div>
-    `;
-  }
-
-  async sendAiPrompt() {
-    const textarea = document.getElementById("ai-prompt-input");
-    if (!textarea) return;
-    const text = textarea.value.trim();
-    if (!text && this.aiAttachments.length === 0) return;
-    if (this.isAiStreaming) return;
-
-    const modelSelect = document.getElementById("ai-model-select");
-    const model = modelSelect ? modelSelect.value : "anthropic/claude-3-7-sonnet";
-    const attachments = [...this.aiAttachments];
-    const ws = this.getActiveWorkspace();
-
-    // Clear input
-    textarea.value = "";
-    textarea.style.height = "auto";
-    this.aiAttachments = [];
-    this.renderAiAttachmentBar();
-
-    // Remove welcome placeholder if first message
-    const container = document.getElementById("ai-chat-messages");
-    const welcome = container?.querySelector(".ai-welcome-message");
-    if (welcome) welcome.remove();
-
-    // Append User Message
-    const userMsgRow = document.createElement("div");
-    userMsgRow.className = "ai-msg ai-msg-user";
-    let userImagesHtml = "";
-    if (attachments.length > 0) {
-      userImagesHtml = `<div class="ai-bubble-images">` +
-        attachments.map((att) => `<img class="ai-bubble-image-thumb" src="${att.dataUrl}" alt="${this.escapeHtml(att.name)}" />`).join("") +
-        `</div>`;
-    }
-    userMsgRow.innerHTML = `
-      <div class="ai-msg-header">You</div>
-      <div class="ai-msg-bubble">
-        ${userImagesHtml}
-        <div>${this.escapeHtml(text).replace(/\n/g, "<br/>")}</div>
-      </div>
-    `;
-    container.appendChild(userMsgRow);
-
-    // Prepare Assistant Message Placeholder
-    const assistantMsgRow = document.createElement("div");
-    assistantMsgRow.className = "ai-msg ai-msg-assistant";
-    const assistantId = `ai-msg-bot-${Date.now()}`;
-    assistantMsgRow.id = assistantId;
-    assistantMsgRow.innerHTML = `
-      <div class="ai-msg-header">AI Assistant (${this.escapeHtml(model.split("/").pop())})</div>
-      <div class="ai-msg-bubble">
-        <div class="ai-msg-tools-area"></div>
-        <div class="ai-msg-content"><span class="ai-streaming-cursor"></span></div>
-      </div>
-    `;
-    container.appendChild(assistantMsgRow);
-    this.scrollAiChatToBottom();
-
-    // Start SSE Stream
-    this.setAiStreamingState(true);
-    this.setAiStatus("busy", "Thinking...");
-    this.aiAbortController = new AbortController();
-
-    const toolsArea = assistantMsgRow.querySelector(".ai-msg-tools-area");
-    const contentArea = assistantMsgRow.querySelector(".ai-msg-content");
-    let accumulatedText = "";
-    const activeToolCalls = new Map(); // id -> tool object
-
-    try {
-      const response = await fetch("/api/agent/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: this.aiAbortController.signal,
-        body: JSON.stringify({
-          prompt: text,
-          model,
-          workspacePath: ws ? ws.path : null,
-          images: attachments.map((a) => ({ name: a.name, dataUrl: a.dataUrl, mime: a.mime }))
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder("utf-8");
-      let buffer = "";
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || !trimmed.startsWith("data:")) continue;
-          const jsonStr = trimmed.replace(/^data:\s*/, "");
-          if (jsonStr === "[DONE]") {
-            break;
-          }
-          try {
-            const event = JSON.parse(jsonStr);
-
-            // Handle token chunk
-            if (event.type === "chunk" || event.type === "token" || event.text || event.delta) {
-              const piece = event.text || event.delta || (event.chunk ? event.chunk : "");
-              accumulatedText += piece;
-              contentArea.innerHTML = this.renderMarkdownHtml(accumulatedText) + `<span class="ai-streaming-cursor"></span>`;
-              this.setAiStatus("busy", "Streaming response...");
-              this.scrollAiChatToBottom();
-            }
-
-            // Handle tool calling events
-            if (event.type === "tool_start" || event.type === "tool_call") {
-              const toolId = event.id || `tool-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-              const toolObj = {
-                id: toolId,
-                name: event.name || event.tool || "tool",
-                args: typeof event.args === "string" ? event.args : JSON.stringify(event.args || {}),
-                status: "running",
-                output: "",
-                open: true
-              };
-              activeToolCalls.set(toolId, toolObj);
-              this.setAiStatus("busy", `Running ${toolObj.name}...`);
-              this.renderActiveTools(toolsArea, activeToolCalls);
-              this.scrollAiChatToBottom();
-            }
-
-            if (event.type === "tool_result" || event.type === "tool_end") {
-              const toolId = event.id || Array.from(activeToolCalls.keys()).pop();
-              if (toolId && activeToolCalls.has(toolId)) {
-                const toolObj = activeToolCalls.get(toolId);
-                toolObj.status = event.isError || event.error ? "error" : "success";
-                toolObj.output = event.result || event.output || event.error || "(completed)";
-                activeToolCalls.set(toolId, toolObj);
-                this.renderActiveTools(toolsArea, activeToolCalls);
-                this.scrollAiChatToBottom();
-              }
-            }
-          } catch {
-            // raw text line fallback
-            if (jsonStr) {
-              accumulatedText += jsonStr;
-              contentArea.innerHTML = this.renderMarkdownHtml(accumulatedText) + `<span class="ai-streaming-cursor"></span>`;
-              this.scrollAiChatToBottom();
-            }
-          }
-        }
-      }
-
-      // Finalize display (remove streaming cursor)
-      contentArea.innerHTML = this.renderMarkdownHtml(accumulatedText || "*No response text.*");
-      this.setAiStatus("", "Ready");
-    } catch (err) {
-      if (err.name === "AbortError") {
-        contentArea.innerHTML = this.renderMarkdownHtml(accumulatedText) + ` <em style="color:#94a3b8;">(Stopped)</em>`;
-        this.setAiStatus("", "Stopped");
-      } else {
-        contentArea.innerHTML = this.renderMarkdownHtml(accumulatedText) + `<div style="color:#f87171; margin-top:6px;">⚠️ Error: ${this.escapeHtml(err.message)}</div>`;
-        this.setAiStatus("error", "Error");
-      }
-    } finally {
-      this.setAiStreamingState(false);
-      this.aiAbortController = null;
-      this.scrollAiChatToBottom();
-    }
-  }
-
-  renderActiveTools(toolsArea, activeToolCalls) {
-    if (!toolsArea) return;
-    toolsArea.innerHTML = Array.from(activeToolCalls.values()).map((t) => this.renderToolCallBlock(t)).join("");
-    // Attach collapse toggles
-    toolsArea.querySelectorAll(".ai-tool-header").forEach((header) => {
-      header.addEventListener("click", () => {
-        const parent = header.closest(".ai-tool-call");
-        if (parent) parent.classList.toggle("open");
-      });
-    });
-  }
 }
 
 // Global App Initialization
@@ -3296,68 +2950,6 @@ window.addEventListener("DOMContentLoaded", () => {
     if (newTabMenu && newTabMenu.classList.contains("open")) {
       if (!newTabMenu.contains(e.target) && e.target !== newTabMoreBtn && e.target !== newTabBtn) {
         newTabMenu.classList.remove("open");
-      }
-    }
-  });
-
-  // AI Assistant Panel Toggles
-  document.getElementById("toggle-ai-btn")?.addEventListener("click", () => {
-    app.toggleAiPanel();
-  });
-  document.getElementById("ai-close-btn")?.addEventListener("click", () => {
-    app.toggleAiPanel(false);
-  });
-  document.getElementById("ai-clear-chat-btn")?.addEventListener("click", () => {
-    app.clearAiChat();
-  });
-
-  // AI Prompt Send & Auto-resize Textarea
-  const aiPromptInput = document.getElementById("ai-prompt-input");
-  aiPromptInput?.addEventListener("input", () => {
-    aiPromptInput.style.height = "auto";
-    aiPromptInput.style.height = `${Math.min(aiPromptInput.scrollHeight, 160)}px`;
-  });
-
-  aiPromptInput?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      app.sendAiPrompt();
-    }
-  });
-
-  document.getElementById("ai-send-btn")?.addEventListener("click", () => {
-    app.sendAiPrompt();
-  });
-
-  document.getElementById("ai-stop-btn")?.addEventListener("click", () => {
-    app.cancelAiStreaming();
-  });
-
-  // File input attach
-  const aiFileInput = document.getElementById("ai-file-input");
-  aiFileInput?.addEventListener("change", (e) => {
-    const files = e.target.files;
-    if (files) {
-      for (let i = 0; i < files.length; i++) {
-        app.addAiAttachment(files[i]);
-      }
-    }
-    aiFileInput.value = "";
-  });
-
-  // Paste image handler inside textarea
-  aiPromptInput?.addEventListener("paste", (e) => {
-    const clipboardData = e.clipboardData;
-    if (!clipboardData || !clipboardData.items) return;
-
-    for (let i = 0; i < clipboardData.items.length; i++) {
-      const item = clipboardData.items[i];
-      if (item.type && item.type.startsWith("image/")) {
-        const file = item.getAsFile();
-        if (file) {
-          e.preventDefault();
-          app.addAiAttachment(file);
-        }
       }
     }
   });

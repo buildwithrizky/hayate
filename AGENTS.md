@@ -1,6 +1,16 @@
-# Agent Guidelines - web-ade-harness
+# Agent Guidelines - ade-harness
 
-## Server Operations
+## Technical Rules
 
-- **DILARANG restart server ADE** (`ade restart`, `ade stop`, kill process server) secara otomatis saat proses development.
-- Server restart **HANYA** boleh dilakukan manual oleh Rizky sendiri.
+### Frontend (Native ES Modules)
+- Gunakan native ES Modules (`<script type="module">`, `import`/`export`).
+- Tanpa bundler (no Vite, Webpack, Rollup).
+- Pisahkan state dan event listener per domain (`terminal`, `agent`, `workspace`, `api`).
+- Dilarang membuat monolith file baru (no 3000-line files). Fitur baru wajib masuk modul terpisah di `public/js/`.
+
+### Backend (Rust / Axum)
+- Pisahkan domain logic dari routing Axum: handlers hanya parse request/response, core logic di modul domain masing-masing.
+- **Zero Panic**: banned `unwrap()` dan `expect()` pada request execution path. Gunakan `?` atau pattern matching.
+- **Native Error Handling**: gunakan `std::fmt::Display` dan `std::error::Error` standar tanpa crate error fiktif (`thiserror` tidak terpasang di dependencies).
+- Map error domain ke HTTP status/response via Axum `IntoResponse`.
+

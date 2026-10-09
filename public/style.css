@@ -1,20 +1,36 @@
 :root {
+  /* Surfaces & Backgrounds */
   --bg-app: #08090d;
   --bg-panel: #0d0f14;
   --bg-subtle: #12151d;
   --bg-hover: #181c26;
   --bg-active: #1f2432;
+
+  /* Borders */
   --border-subtle: #1a1e29;
   --border-strong: #272c3d;
+  --border-focus: #3b82f6;
+
+  /* Text Scales */
   --text-main: #f3f4f6;
   --text-muted: #8b92a5;
   --text-dim: #545b6e;
+
+  /* Accent & Status */
   --accent-emerald: #10b981;
   --accent-emerald-glow: rgba(16, 185, 129, 0.4);
   --accent-danger: #f43f5e;
   --accent-amber: #f59e0b;
+  --accent-blue: #3b82f6;
+
+  /* Typography */
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  /* Radius */
+  --radius-sm: 3px;
+  --radius-md: 4px;
+  --radius-full: 9999px;
 }
 
 * {
@@ -955,7 +971,7 @@ html, body {
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid var(--border-subtle);
-  background: var(--bg-surface);
+  background: var(--bg-panel);
   flex-shrink: 0;
 }
 
@@ -1147,7 +1163,7 @@ html, body {
 .rs-commit-box {
   padding: 8px 10px;
   border-bottom: 1px solid var(--border-subtle);
-  background: var(--bg-surface);
+  background: var(--bg-panel);
   flex-shrink: 0;
 }
 
@@ -1280,7 +1296,7 @@ html, body {
 }
 
 .rs-git-action-btn:hover {
-  background: var(--bg-hover-strong);
+  background: var(--bg-hover);
   color: #ffffff;
 }
 
@@ -1649,7 +1665,7 @@ html, body {
   height: 40px;
   padding: 0 12px;
   border-bottom: 1px solid var(--border-subtle);
-  background: var(--bg-surface);
+  background: var(--bg-panel);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1673,7 +1689,7 @@ html, body {
   flex: 1;
   overflow: auto;
   padding: 12px;
-  background: var(--bg-canvas);
+  background: var(--bg-app);
 }
 
 .rs-modal-body pre {
@@ -1725,7 +1741,7 @@ html, body {
 }
 
 .sb-divider {
-  color: var(--border-medium);
+  color: var(--border-strong);
   font-size: 10px;
 }
 

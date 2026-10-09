@@ -1,8 +1,32 @@
+use tauri_plugin_updater::UpdaterExt;
+
 pub mod agent_core;
 pub mod git_ops;
 pub mod http_server;
 pub mod pty_mgr;
 pub mod workspace;
+
+async fn check_and_apply_update(app: tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+    let updater = app.updater()?;
+    if let Some(update) = updater.check().await? {
+        log::info!("Update found: version {}", update.version);
+        let mut downloaded = 0;
+        update
+            .download_and_install(
+                |chunk_length, content_length| {
+                    downloaded += chunk_length;
+                    log::info!("Downloaded {downloaded}/{} bytes", content_length.unwrap_or(0));
+                },
+                || {
+                    log::info!("Download finished, installing update");
+                },
+            )
+            .await?;
+        log::info!("Update installed. Relaunching app...");
+        app.restart();
+    }
+    Ok(())
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -18,6 +42,16 @@ pub fn run() {
             }
 
             let app_handle = app.handle().clone();
+
+            // Background auto-updater task
+            let updater_handle = app_handle.clone();
+            tauri::async_runtime::spawn(async move {
+                // ponytail: delay check 5s to avoid fighting startup load, upgrade to interval timer if polling wanted
+                tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                if let Err(e) = check_and_apply_update(updater_handle).await {
+                    log::error!("Auto-updater error: {e}");
+                }
+            });
 
             let port = std::env::var("PORT")
                 .ok()

@@ -2,28 +2,28 @@
  * Web ADE Terminal - Vanilla Client
  */
 
-// Terminal Theme Configuration
+// Terminal Theme Configuration - 100% Sokudo.dev
 const TERM_THEME = {
-  background: "#050608",
-  foreground: "#f3f4f6",
-  cursor: "#10b981",
-  cursorAccent: "#050608",
-  selectionBackground: "#3f3f4680",
-  black: "#18181b",
-  red: "#ef4444",
-  green: "#22c55e",
-  yellow: "#eab308",
-  blue: "#3b82f6",
+  background: "#000000",
+  foreground: "#f5f5f7",
+  cursor: "#0091ff",
+  cursorAccent: "#000000",
+  selectionBackground: "rgba(0, 145, 255, 0.3)",
+  black: "#121212",
+  red: "#f43f5e",
+  green: "#10b981",
+  yellow: "#f59e0b",
+  blue: "#0091ff",
   magenta: "#a855f7",
-  cyan: "#06b6d4",
-  white: "#f4f4f5",
-  brightBlack: "#71717a",
-  brightRed: "#f87171",
-  brightGreen: "#4ade80",
-  brightYellow: "#facc15",
-  brightBlue: "#60a5fa",
+  cyan: "#00d2ff",
+  white: "#f5f5f7",
+  brightBlack: "#5c5c66",
+  brightRed: "#fb7185",
+  brightGreen: "#34d399",
+  brightYellow: "#fbbf24",
+  brightBlue: "#38bdf8",
   brightMagenta: "#c084fc",
-  brightCyan: "#22d3ee",
+  brightCyan: "#67e8f9",
   brightWhite: "#ffffff"
 };
 
@@ -536,7 +536,7 @@ class StateManager {
     const term = new TerminalClass({
       theme: TERM_THEME,
       cursorBlink: true,
-      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+      fontFamily: "'JetBrains Mono', 'Menlo', 'Monaco', monospace",
       fontSize: 13,
       lineHeight: 1.25,
       convertEol: true,

@@ -31,7 +31,7 @@ pub struct AppState {
     pub pty_mgr: PtyManager,
 }
 
-fn resolve_public_dir() -> PathBuf {
+pub fn resolve_public_dir<R: tauri::Runtime>(app_handle: Option<&tauri::AppHandle<R>>) -> PathBuf {
     if let Ok(dir) = std::env::var("ADE_PUBLIC_DIR") {
         let p = PathBuf::from(dir);
         if p.exists() {
@@ -39,34 +39,59 @@ fn resolve_public_dir() -> PathBuf {
         }
     }
 
-    let dev_tauri = PathBuf::from("../public");
-    if dev_tauri.exists() {
-        return dev_tauri;
-    }
-
-    let dev_root = PathBuf::from("./public");
-    if dev_root.exists() {
-        return dev_root;
+    // Tauri v2 resource dir via Manager
+    if let Some(app) = app_handle {
+        use tauri::Manager;
+        if let Ok(resource_dir) = app.path().resource_dir() {
+            let candidates = [
+                resource_dir.join("public"),
+                resource_dir.join("_up_").join("public"),
+                resource_dir.clone(),
+            ];
+            for p in candidates {
+                if p.join("index.html").exists() {
+                    return p;
+                }
+            }
+        }
     }
 
     if let Ok(exe_path) = std::env::current_exe()
         && let Some(exe_dir) = exe_path.parent()
     {
-        let res_dir = exe_dir.join("../Resources/public");
-        if res_dir.exists() {
-            return res_dir;
+        let exe_candidates = [
+            exe_dir.join("../Resources/public"),
+            exe_dir.join("../Resources/_up_/public"),
+            exe_dir.join("../Resources"),
+            exe_dir.join("resources/public"),
+            exe_dir.join("resources/_up_/public"),
+            exe_dir.join("resources"),
+            exe_dir.join("public"),
+            exe_dir.join("_up_/public"),
+        ];
+        for p in exe_candidates {
+            if p.join("index.html").exists() {
+                return p;
+            }
         }
-        let pub_dir = exe_dir.join("public");
-        if pub_dir.exists() {
-            return pub_dir;
-        }
+    }
+
+    let dev_tauri = PathBuf::from("../public");
+    if dev_tauri.join("index.html").exists() || dev_tauri.exists() {
+        return dev_tauri;
+    }
+
+    let dev_root = PathBuf::from("./public");
+    if dev_root.join("index.html").exists() || dev_root.exists() {
+        return dev_root;
     }
 
     PathBuf::from("../public")
 }
 
-pub fn create_router(state: AppState) -> Router {
-    let public_dir = resolve_public_dir();
+pub fn create_router<R: tauri::Runtime>(state: AppState, app_handle: Option<&tauri::AppHandle<R>>) -> Router {
+    let public_dir = resolve_public_dir(app_handle);
+    log::info!("Serving static files from: {}", public_dir.display());
 
     let index_file = public_dir.join("index.html");
 
@@ -115,11 +140,14 @@ pub fn create_router(state: AppState) -> Router {
         .with_state(state)
 }
 
-pub async fn start_server(port: u16) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub async fn start_server<R: tauri::Runtime>(
+    port: u16,
+    app_handle: Option<tauri::AppHandle<R>>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let state = AppState {
         pty_mgr: PtyManager::new(),
     };
-    let app = create_router(state);
+    let app = create_router(state, app_handle.as_ref());
     let addr = format!("127.0.0.1:{port}");
     let listener = tokio::net::TcpListener::bind(&addr).await?;
     log::info!("Embedded Axum HTTP server running on http://{addr}");

@@ -13,10 +13,13 @@
     "windows": [
       {
         "title": "ADE Harness",
-        "width": 800,
-        "height": 600,
+        "width": 1440,
+        "height": 900,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "minWidth": 960,
+        "minHeight": 600,
+        "center": true
       }
     ],
     "security": {

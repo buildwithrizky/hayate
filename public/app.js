@@ -174,16 +174,6 @@ class StateManager {
 
   setConnectionStatus(status) {
     this.connectionStatus = status;
-    this.renderConnectionStatus();
-  }
-
-  renderConnectionStatus() {
-    const el = document.getElementById("connection-status");
-    if (!el) return;
-    el.className = `status-badge ${this.connectionStatus}`;
-    const dot = `<span class="dot"></span>`;
-    const label = this.connectionStatus;
-    el.innerHTML = `${dot}<span>${label}</span>`;
   }
 
   handleBackendMessage(msg) {

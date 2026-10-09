@@ -115,3 +115,18 @@ impl IntoResponse for AppError {
 }
 ```
 
+---
+
+## 4. Checklist Audit Kualitas DRY & SOLID
+
+Setiap fitur atau perubahan kode wajib lolos checklist ini sebelum merge/commit:
+
+- [ ] **DRY - Zero Duplication**: Tidak ada logic copy-paste; helper/util diekstrak jika pola berulang $\ge$ 2 kali.
+- [ ] **DRY - SSOT Enforced**: State, tipe data, endpoint, dan konstanta tersentralisasi di satu modul definisi.
+- [ ] **SRP - Single Responsibility**: Fungsi $\le$ 40–50 baris; setiap modul/struct/fungsi hanya tangani satu tugas.
+- [ ] **OCP - Open/Closed**: Penambahan fitur baru memakai ekstensi (trait/handler/plugin) tanpa merusak core logic.
+- [ ] **LSP - Liskov Substitution**: Semua implementasi trait/interface memenuhi kontrak tanpa behavior aneh atau error tak terduga.
+- [ ] **ISP - Interface Segregation**: Interface/trait fokus dan ramping; caller tidak terbebani method yang tidak dibutuhkan.
+- [ ] **DIP - Dependency Inversion**: Domain logic bergantung pada abstraksi/trait, bukan IO langsung atau implementasi konkrit adapter.
+
+

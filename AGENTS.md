@@ -25,3 +25,18 @@ Dilarang membuat perubahan arsitektur atau antarmuka tanpa menyelaraskan ke dua 
 - **Guard Clauses & Early Returns**: wajib gunakan guard clauses / early returns. Hindari nested `if` lebih dari 3 level.
 - **Single Responsibility**: batas panjang fungsi maksimal 40–50 baris. Pecah logic jika melebihi batas ini.
 - **Modularisasi Terisolasi**: larangan god-object dan god-function. Pisahkan domain logic ke fungsi/modul independen dengan tanggung jawab tunggal.
+
+## Prinsip Wajib: DRY & SOLID
+
+### DRY (Don't Repeat Yourself)
+- **Larangan copy-paste logic**: duplikasi kode dilarang.
+- **Single Source of Truth (SSOT)**: satu sumber pasti untuk state, tipe data, konfigurasi, dan konstanta.
+- **Ekstraksi reusable util**: ekstrak helper/util terpisah jika pola kode muncul $\ge$ 2 kali.
+
+### SOLID Principles
+- **S - Single Responsibility**: 1 modul/fungsi/struct hanya pegang 1 tanggung jawab spesifik. Batas fungsi 40–50 baris.
+- **O - Open/Closed**: Modul terbuka untuk ekstensi (traits/plugins/handlers), tertutup untuk modifikasi destruktif pada core logic.
+- **L - Liskov Substitution**: Kontrak/trait konsisten. Tidak boleh ada implementasi yang merusak behavior dasar interface.
+- **I - Interface Segregation**: Trait & interface ramping. Caller tidak boleh dipaksa bergantung pada method yang tidak dipakainya.
+- **D - Dependency Inversion**: Pisahkan dependensi konkrit lewat traits/abstraksi. Domain logic tidak boleh direct-couple ke IO/adapter mentah.
+

@@ -1,57 +1,64 @@
-# DESIGN_SYSTEM.md — Web ADE Harness Design Tokens
+# DESIGN_SYSTEM.md — Sokudo Design System Tokens
 
-Dokumentasi token aktif dan aturan styling `public/style.css`.
+Dokumentasi token aktif dan aturan styling Sokudo (`https://sokudo.dev`) di `public/style.css`.
 
 ---
 
 ## 1. Core Tokens (`:root`)
 
-### Surface & Background
+### Surface & Background (Pure Pitch Black Palette)
 | Token | Nilai | Penggunaan |
 |---|---|---|
-| `--bg-app` | `#08090d` | Base background aplikasi, kanvas editor/preview |
-| `--bg-panel` | `#0d0f14` | Header, sidebar, panel container, modal header |
-| `--bg-subtle` | `#12151d` | Item list, kartu, tabs default, search input |
-| `--bg-hover` | `#181c26` | Interactive hover state |
-| `--bg-active` | `#1f2432` | Interactive active / selected state |
+| `--bg-app` | `#000000` | Pure pitch black: base app, main canvas, editor/terminal background |
+| `--bg-panel` | `#0f0f0f` | Surface tier 1: header, sidebar, statusbar, modal container |
+| `--bg-subtle` | `#141414` | Surface tier 2: tab inactive, card, item list, chat message |
+| `--bg-hover` | `#1a1a1a` | Interactive hover state |
+| `--bg-active` | `#222222` | Interactive active / selected state |
 
-### Border
+### Border & Glassmorphism
 | Token | Nilai | Penggunaan |
 |---|---|---|
-| `--border-subtle` | `#1a1e29` | Pembatas layout, panel divider, frame elemen |
-| `--border-strong` | `#272c3d` | Divider tegas, scrollbar thumb, hover border |
-| `--border-focus` | `#3b82f6` | Input focus ring |
+| `--border-subtle` | `rgba(255, 255, 255, 0.08)` | Pembatas layout, panel divider, subtle glass edges |
+| `--border-strong` | `rgba(255, 255, 255, 0.16)` | Card frame, hover border, modal window border, input frame |
+| `--border-focus` | `#0091ff` | Electric blue focus ring |
+| `--glass-bg` | `rgba(15, 15, 15, 0.75)` | Glassmorphism panel backdrop |
+| `--glass-blur` | `blur(12px)` | Backdrop filter untuk glass surface |
 
-### Typography & Text
+### Accent & Glow (Electric Blue / Subtle Cyan)
 | Token | Nilai | Penggunaan |
 |---|---|---|
-| `--font-mono` | `ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, ...` | Monospace UI default (terminal, tabs, logs) |
-| `--font-sans` | `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, ...` | Prose & markdown preview |
-| `--text-main` | `#f3f4f6` | Teks utama, judul, value aktif |
-| `--text-muted` | `#8b92a5` | Label, metadata, secondary text |
-| `--text-dim` | `#545b6e` | Dim text, counter, placeholder, ikon pasif |
-
-### Accent & Status
-| Token | Nilai | Penggunaan |
-|---|---|---|
+| `--accent-blue` | `#0091ff` | Electric blue: primary button, active highlight, focused borders |
+| `--accent-blue-hover` | `#1a9eff` | Electric blue hover state |
+| `--accent-blue-glow` | `0 0 16px rgba(0, 145, 255, 0.35)` | Subtle glow highlight untuk brand accents & buttons |
+| `--accent-cyan` | `#00d2ff` | Cyan highlight & secondary status glow |
 | `--accent-emerald` | `#10b981` | Running, connected, success, commit |
-| `--accent-emerald-glow` | `rgba(16, 185, 129, 0.4)` | Pulse dot glow, active glow |
+| `--accent-emerald-glow` | `rgba(16, 185, 129, 0.4)` | Pulse dot glow |
 | `--accent-danger` | `#f43f5e` | Error, offline, kill process |
 | `--accent-amber` | `#f59e0b` | Warning, connecting, dirty state |
-| `--accent-blue` | `#3b82f6` | Info, focus ring |
 
-### Radius
+### Typography
 | Token | Nilai | Penggunaan |
 |---|---|---|
-| `--radius-sm` | `3px` | Tag, scrollbar thumb, tab border |
-| `--radius-md` | `4px` | Tombol, input, commit box |
-| `--radius-full` | `9999px` | Pulse dot, status pill |
+| `--font-sans` | `'Figtree', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif` | Clean sans default UI Sokudo (headings, buttons, UI controls) |
+| `--font-mono` | `'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace` | Clean monospace default (code editor, terminal, logs, file paths) |
+| `--text-main` | `#f5f5f7` | Teks utama, judul, value aktif |
+| `--text-muted` | `#9e9ea7` | Label, metadata, secondary text |
+| `--text-dim` | `#5c5c66` | Dim text, counter, placeholder, ikon pasif |
+
+### Radii (Sokudo Shapes)
+| Token | Nilai | Penggunaan |
+|---|---|---|
+| `--radius-sm` | `6px` | Tag, badge kecil, scrollbar thumb |
+| `--radius-input` | `8px` | Form input, prompt box, search box (8px - 10px) |
+| `--radius-card` | `14px` | Modal, card container, preview frame (14px - 16px) |
+| `--radius-pill` | `9999px` | Button pill, status pill, tabs pill Sokudo |
 
 ---
 
 ## 2. Layout & Styling Rules
 
-1. **Native CSS Only**: Tidak ada CSS utility framework atau preprocessor eksternal. Gunakan CSS custom properties resmi di atas.
-2. **Dense Monospace Engineering Theme**: Pertahankan layout compact, kontras tajam dark mode, dan font mono untuk komponen kontrol operasional.
-3. **Warna Semantik Konsisten**: Status colors hanya untuk status operasional nyata (emerald = ready/ok, amber = pending/dirty, danger = down/err).
-4. **Anti-Slop**: Tidak memakai gradient ungu AI, neon glow acak, glassmorphism blur berat, atau margin/padding spekulatif tak terpakai.
+1. **Sokudo Aesthetic**: Pure pitch black `#000000` dengan kontras kaca subtle (`rgba(255, 255, 255, 0.08)` dan `0.16`). Tidak ada gray/slate murahan.
+2. **Electric Blue Signature**: Aksen utama `#0091ff` dengan transisi ke hover `#1a9eff` dan subtle cyan/blue glow.
+3. **Pill Buttons & Rounded Corners**: Tombol interaktif menggunakan pill (`9999px`), modal/kartu memakai `14px` - `16px`, input memakai `8px` - `10px`.
+4. **Figtree + Clean Mono**: UI controls berkarakter modern dan bersih lewat Figtree, sedangkan representasi kode/terminal tetap presisi dengan monospace.
+5. **No Broken UI**: Semua selector kelas, struktur grid/flex, dan fungsionalitas UI ADE Harness tetap 100% kompatibel dan utuh.

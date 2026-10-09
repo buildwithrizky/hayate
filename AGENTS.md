@@ -14,3 +14,7 @@
 - **Native Error Handling**: gunakan `std::fmt::Display` dan `std::error::Error` standar tanpa crate error fiktif (`thiserror` tidak terpasang di dependencies).
 - Map error domain ke HTTP status/response via Axum `IntoResponse`.
 
+### Anti-Spaghetti Code
+- **Guard Clauses & Early Returns**: wajib gunakan guard clauses / early returns. Hindari nested `if` lebih dari 3 level.
+- **Single Responsibility**: batas panjang fungsi maksimal 40–50 baris. Pecah logic jika melebihi batas ini.
+- **Modularisasi Terisolasi**: larangan god-object dan god-function. Pisahkan domain logic ke fungsi/modul independen dengan tanggung jawab tunggal.

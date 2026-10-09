@@ -6,7 +6,7 @@
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://github.com/buildwithrizky/web-ade-harness/releases/latest/download/latest.json"
+        "https://github.com/buildwithrizky/hayate/releases/latest/download/latest.json"
       ],
       "pubkey": ""
     }

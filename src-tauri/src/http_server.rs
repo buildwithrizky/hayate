@@ -31,10 +31,42 @@ pub struct AppState {
     pub pty_mgr: PtyManager,
 }
 
+fn resolve_public_dir() -> PathBuf {
+    if let Ok(dir) = std::env::var("ADE_PUBLIC_DIR") {
+        let p = PathBuf::from(dir);
+        if p.exists() {
+            return p;
+        }
+    }
+
+    let dev_tauri = PathBuf::from("../public");
+    if dev_tauri.exists() {
+        return dev_tauri;
+    }
+
+    let dev_root = PathBuf::from("./public");
+    if dev_root.exists() {
+        return dev_root;
+    }
+
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            let res_dir = exe_dir.join("../Resources/public");
+            if res_dir.exists() {
+                return res_dir;
+            }
+            let pub_dir = exe_dir.join("public");
+            if pub_dir.exists() {
+                return pub_dir;
+            }
+        }
+    }
+
+    PathBuf::from("../public")
+}
+
 pub fn create_router(state: AppState) -> Router {
-    let public_dir = std::env::var("ADE_PUBLIC_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("../public"));
+    let public_dir = resolve_public_dir();
 
     let index_file = public_dir.join("index.html");
 

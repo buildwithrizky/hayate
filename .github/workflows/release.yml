@@ -40,3 +40,37 @@ jobs:
           releaseBody: 'See changelog for details.'
           releaseDraft: false
           prerelease: false
+
+  update-brew-tap:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update Homebrew Tap
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN || secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ github.ref_name }}"
+          APP_VERSION="${VERSION#v}"
+          DMG_URL="https://github.com/buildwithrizky/hayate/releases/download/${VERSION}/Hayate_${APP_VERSION}_aarch64.dmg"
+
+          echo "Fetching SHA256 for ${DMG_URL}..."
+          curl --retry 5 --retry-delay 5 --retry-all-errors -fL -o Hayate.dmg "$DMG_URL"
+          SHA256=$(sha256sum Hayate.dmg | awk '{print $1}')
+          rm -f Hayate.dmg
+
+          echo "Cloning homebrew-tap repository..."
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/buildwithrizky/homebrew-tap.git" tap
+
+          cd tap
+          sed -i -E 's/(version ")[^"]+(")/\1'"${APP_VERSION}"'\2/' Casks/hayate.rb
+          sed -i -E 's/(sha256 ")[^"]+(")/\1'"${SHA256}"'\2/' Casks/hayate.rb
+
+          git add Casks/hayate.rb
+          if git diff --staged --quiet; then
+            echo "No changes in Casks/hayate.rb"
+          else
+            git commit -m "chore(cask): bump hayate to ${APP_VERSION}"
+            git push origin main
+          fi

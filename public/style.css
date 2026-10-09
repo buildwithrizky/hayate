@@ -125,6 +125,16 @@ html, body {
   color: var(--text-main);
 }
 
+.app-logo-mark {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 6px rgba(29, 109, 255, 0.45));
+}
+
 .pulse-dot {
   width: 8px;
   height: 8px;

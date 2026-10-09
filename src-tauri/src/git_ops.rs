@@ -33,7 +33,10 @@ pub struct GitCommitItem {
 fn extended_path() -> String {
     let home = std::env::var("HOME").unwrap_or_default();
     let curr = std::env::var("PATH").unwrap_or_default();
-    format!("{}/.bun/bin:/opt/homebrew/bin:/usr/local/bin:{}", home, curr)
+    format!(
+        "{}/.bun/bin:/opt/homebrew/bin:/usr/local/bin:{}",
+        home, curr
+    )
 }
 
 pub async fn git_status(repo_path: &str) -> Result<GitStatusResult, String> {
@@ -154,7 +157,10 @@ pub async fn git_diff(
     if !output.status.success() && !staged_only && commit_hash.is_none() {
         // Fallback for repo with no commits yet (HEAD not found)
         let mut fallback = Command::new("git");
-        fallback.current_dir(repo_path).env("PATH", extended_path()).arg("diff");
+        fallback
+            .current_dir(repo_path)
+            .env("PATH", extended_path())
+            .arg("diff");
         if let Some(file) = target_file {
             fallback.arg("--").arg(file);
         }
@@ -196,7 +202,9 @@ pub async fn git_commit(repo_path: &str, message: &str, stage_all: bool) -> Resu
         return Err(msg.trim().to_string());
     }
 
-    Ok(String::from_utf8_lossy(&commit_out.stdout).trim().to_string())
+    Ok(String::from_utf8_lossy(&commit_out.stdout)
+        .trim()
+        .to_string())
 }
 
 pub async fn git_log(repo_path: &str) -> Result<Vec<GitCommitItem>, String> {
@@ -233,7 +241,9 @@ pub async fn git_log(repo_path: &str) -> Result<Vec<GitCommitItem>, String> {
 
 pub async fn git_stage(repo_path: &str, file: Option<&str>, all: bool) -> Result<(), String> {
     let mut cmd = Command::new("git");
-    cmd.current_dir(repo_path).env("PATH", extended_path()).arg("add");
+    cmd.current_dir(repo_path)
+        .env("PATH", extended_path())
+        .arg("add");
 
     if all {
         cmd.arg("-A");
@@ -253,7 +263,9 @@ pub async fn git_stage(repo_path: &str, file: Option<&str>, all: bool) -> Result
 
 pub async fn git_unstage(repo_path: &str, file: Option<&str>, all: bool) -> Result<(), String> {
     let mut cmd = Command::new("git");
-    cmd.current_dir(repo_path).env("PATH", extended_path()).args(["reset", "HEAD"]);
+    cmd.current_dir(repo_path)
+        .env("PATH", extended_path())
+        .args(["reset", "HEAD"]);
 
     if !all {
         if let Some(f) = file {
@@ -268,7 +280,10 @@ pub async fn git_unstage(repo_path: &str, file: Option<&str>, all: bool) -> Resu
     // Fallback if no initial commit
     if !out.status.success() {
         let mut rm_cmd = Command::new("git");
-        rm_cmd.current_dir(repo_path).env("PATH", extended_path()).args(["rm", "--cached", "-r", "--"]);
+        rm_cmd
+            .current_dir(repo_path)
+            .env("PATH", extended_path())
+            .args(["rm", "--cached", "-r", "--"]);
         if all {
             rm_cmd.arg(".");
         } else if let Some(f) = file {
@@ -301,15 +316,15 @@ pub async fn git_discard(repo_path: &str, file: Option<&str>, all: bool) -> Resu
             .output()
             .await;
 
-        if let Ok(r) = res {
-            if !r.status.success() {
-                let _ = Command::new("git")
-                    .args(["checkout", "--", "."])
-                    .current_dir(repo_path)
-                    .env("PATH", extended_path())
-                    .output()
-                    .await;
-            }
+        if let Ok(r) = res
+            && !r.status.success()
+        {
+            let _ = Command::new("git")
+                .args(["checkout", "--", "."])
+                .current_dir(repo_path)
+                .env("PATH", extended_path())
+                .output()
+                .await;
         }
 
         let _ = Command::new("git")
@@ -341,15 +356,15 @@ pub async fn git_discard(repo_path: &str, file: Option<&str>, all: bool) -> Resu
         .output()
         .await;
 
-    if let Ok(r) = res {
-        if !r.status.success() {
-            let _ = Command::new("git")
-                .args(["checkout", "--", file_str])
-                .current_dir(repo_path)
-                .env("PATH", extended_path())
-                .output()
-                .await;
-        }
+    if let Ok(r) = res
+        && !r.status.success()
+    {
+        let _ = Command::new("git")
+            .args(["checkout", "--", file_str])
+            .current_dir(repo_path)
+            .env("PATH", extended_path())
+            .output()
+            .await;
     }
 
     // Untracked physical deletion fallback

@@ -4,21 +4,21 @@ use crate::pty_mgr::PtyManager;
 use crate::workspace;
 
 use axum::{
+    Json, Router,
     extract::{
-        ws::{Message as AxumWsMessage, WebSocket, WebSocketUpgrade},
         FromRequest, Multipart, Query, State,
+        ws::{Message as AxumWsMessage, WebSocket, WebSocketUpgrade},
     },
-    http::{header, HeaderValue, StatusCode},
+    http::{HeaderValue, StatusCode, header},
     response::{
-        sse::{Event, KeepAlive, Sse},
         IntoResponse, Response,
+        sse::{Event, KeepAlive, Sse},
     },
     routing::{get, post, put},
-    Json, Router,
 };
-use futures_util::{stream, SinkExt, StreamExt};
+use futures_util::{SinkExt, StreamExt, stream};
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::convert::Infallible;
 use std::path::PathBuf;
 use sysinfo::System;
@@ -49,16 +49,16 @@ fn resolve_public_dir() -> PathBuf {
         return dev_root;
     }
 
-    if let Ok(exe_path) = std::env::current_exe() {
-        if let Some(exe_dir) = exe_path.parent() {
-            let res_dir = exe_dir.join("../Resources/public");
-            if res_dir.exists() {
-                return res_dir;
-            }
-            let pub_dir = exe_dir.join("public");
-            if pub_dir.exists() {
-                return pub_dir;
-            }
+    if let Ok(exe_path) = std::env::current_exe()
+        && let Some(exe_dir) = exe_path.parent()
+    {
+        let res_dir = exe_dir.join("../Resources/public");
+        if res_dir.exists() {
+            return res_dir;
+        }
+        let pub_dir = exe_dir.join("public");
+        if pub_dir.exists() {
+            return pub_dir;
         }
     }
 
@@ -143,10 +143,10 @@ async fn handle_ws_connection(socket: WebSocket, state: AppState) {
     // Task forwarding pty output to ws
     let mut forward_task = tokio::spawn(async move {
         while let Ok(msg) = bcast_rx.recv().await {
-            if let Ok(json_str) = serde_json::to_string(&msg) {
-                if sender.send(AxumWsMessage::Text(json_str.into())).await.is_err() {
-                    break;
-                }
+            if let Ok(json_str) = serde_json::to_string(&msg)
+                && sender.send(AxumWsMessage::Text(json_str)).await.is_err()
+            {
+                break;
             }
         }
     });
@@ -155,42 +155,42 @@ async fn handle_ws_connection(socket: WebSocket, state: AppState) {
     let pty_mgr = state.pty_mgr.clone();
     let mut recv_task = tokio::spawn(async move {
         while let Some(Ok(msg)) = receiver.next().await {
-            if let AxumWsMessage::Text(txt) = msg {
-                if let Ok(val) = serde_json::from_str::<Value>(&txt) {
-                    let action = val.get("action").and_then(|v| v.as_str()).unwrap_or("");
-                    match action {
-                        "spawn" => {
-                            let sid = val.get("sessionId").and_then(|v| v.as_str()).unwrap_or("");
-                            let repo = val.get("repoPath").and_then(|v| v.as_str()).unwrap_or("");
-                            let cols = val.get("cols").and_then(|v| v.as_u64()).unwrap_or(80) as u16;
-                            let rows = val.get("rows").and_then(|v| v.as_u64()).unwrap_or(24) as u16;
-                            if !sid.is_empty() && !repo.is_empty() {
-                                let _ = pty_mgr.spawn(sid, repo, cols, rows);
-                            }
+            if let AxumWsMessage::Text(txt) = msg
+                && let Ok(val) = serde_json::from_str::<Value>(&txt)
+            {
+                let action = val.get("action").and_then(|v| v.as_str()).unwrap_or("");
+                match action {
+                    "spawn" => {
+                        let sid = val.get("sessionId").and_then(|v| v.as_str()).unwrap_or("");
+                        let repo = val.get("repoPath").and_then(|v| v.as_str()).unwrap_or("");
+                        let cols = val.get("cols").and_then(|v| v.as_u64()).unwrap_or(80) as u16;
+                        let rows = val.get("rows").and_then(|v| v.as_u64()).unwrap_or(24) as u16;
+                        if !sid.is_empty() && !repo.is_empty() {
+                            let _ = pty_mgr.spawn(sid, repo, cols, rows);
                         }
-                        "input" => {
-                            let sid = val.get("sessionId").and_then(|v| v.as_str()).unwrap_or("");
-                            let input_data = val.get("data").and_then(|v| v.as_str()).unwrap_or("");
-                            if !sid.is_empty() {
-                                let _ = pty_mgr.write(sid, input_data);
-                            }
-                        }
-                        "resize" => {
-                            let sid = val.get("sessionId").and_then(|v| v.as_str()).unwrap_or("");
-                            let cols = val.get("cols").and_then(|v| v.as_u64()).unwrap_or(80) as u16;
-                            let rows = val.get("rows").and_then(|v| v.as_u64()).unwrap_or(24) as u16;
-                            if !sid.is_empty() {
-                                let _ = pty_mgr.resize(sid, cols, rows);
-                            }
-                        }
-                        "kill" | "stop" => {
-                            let sid = val.get("sessionId").and_then(|v| v.as_str()).unwrap_or("");
-                            if !sid.is_empty() {
-                                let _ = pty_mgr.kill(sid);
-                            }
-                        }
-                        _ => {}
                     }
+                    "input" => {
+                        let sid = val.get("sessionId").and_then(|v| v.as_str()).unwrap_or("");
+                        let input_data = val.get("data").and_then(|v| v.as_str()).unwrap_or("");
+                        if !sid.is_empty() {
+                            let _ = pty_mgr.write(sid, input_data);
+                        }
+                    }
+                    "resize" => {
+                        let sid = val.get("sessionId").and_then(|v| v.as_str()).unwrap_or("");
+                        let cols = val.get("cols").and_then(|v| v.as_u64()).unwrap_or(80) as u16;
+                        let rows = val.get("rows").and_then(|v| v.as_u64()).unwrap_or(24) as u16;
+                        if !sid.is_empty() {
+                            let _ = pty_mgr.resize(sid, cols, rows);
+                        }
+                    }
+                    "kill" | "stop" => {
+                        let sid = val.get("sessionId").and_then(|v| v.as_str()).unwrap_or("");
+                        if !sid.is_empty() {
+                            let _ = pty_mgr.kill(sid);
+                        }
+                    }
+                    _ => {}
                 }
             }
         }
@@ -231,12 +231,20 @@ async fn handle_create_workspace(Json(body): Json<CreateWorkspaceReq>) -> impl I
     let name = body.name.unwrap_or_default().trim().to_string();
     let path = body.path.unwrap_or_default().trim().to_string();
     if name.is_empty() || path.is_empty() {
-        return (StatusCode::BAD_REQUEST, Json(json!({"error": "name and path required"}))).into_response();
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "name and path required"})),
+        )
+            .into_response();
     }
 
     let p = PathBuf::from(&path);
     if !p.exists() || !p.is_dir() {
-        return (StatusCode::BAD_REQUEST, Json(json!({"error": "Directory path does not exist"}))).into_response();
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "Directory path does not exist"})),
+        )
+            .into_response();
     }
 
     let resolved = p.canonicalize().unwrap_or(p).to_string_lossy().to_string();
@@ -269,18 +277,30 @@ async fn handle_update_workspace(
     let mut list = workspace::load_workspaces().await;
     let idx = list.iter().position(|w| w.id == id);
     let Some(idx) = idx else {
-        return (StatusCode::NOT_FOUND, Json(json!({"error": "Workspace not found"}))).into_response();
+        return (
+            StatusCode::NOT_FOUND,
+            Json(json!({"error": "Workspace not found"})),
+        )
+            .into_response();
     };
 
     let name = body.name.unwrap_or_default().trim().to_string();
     let path = body.path.unwrap_or_default().trim().to_string();
     if name.is_empty() || path.is_empty() {
-        return (StatusCode::BAD_REQUEST, Json(json!({"error": "name and path required"}))).into_response();
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "name and path required"})),
+        )
+            .into_response();
     }
 
     let p = PathBuf::from(&path);
     if !p.exists() || !p.is_dir() {
-        return (StatusCode::BAD_REQUEST, Json(json!({"error": "Directory path does not exist"}))).into_response();
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "Directory path does not exist"})),
+        )
+            .into_response();
     }
 
     let resolved = p.canonicalize().unwrap_or(p).to_string_lossy().to_string();
@@ -300,7 +320,11 @@ async fn handle_delete_workspace(
     let mut list = workspace::load_workspaces().await;
     let idx = list.iter().position(|w| w.id == id);
     let Some(idx) = idx else {
-        return (StatusCode::NOT_FOUND, Json(json!({"error": "Workspace not found"}))).into_response();
+        return (
+            StatusCode::NOT_FOUND,
+            Json(json!({"error": "Workspace not found"})),
+        )
+            .into_response();
     };
 
     let deleted = list.remove(idx);
@@ -325,7 +349,11 @@ struct BrowseQuery {
 async fn handle_browse(Query(query): Query<BrowseQuery>) -> impl IntoResponse {
     match workspace::browse_dirs(query.dir).await {
         Ok(res) => Json(json!(res)).into_response(),
-        Err(e) => (StatusCode::BAD_REQUEST, Json(json!({"error": e, "dirs": []}))).into_response(),
+        Err(e) => (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": e, "dirs": []})),
+        )
+            .into_response(),
     }
 }
 
@@ -340,17 +368,21 @@ struct FilesQuery {
 
 async fn handle_get_files(Query(query): Query<FilesQuery>) -> impl IntoResponse {
     let mut target = query.path;
-    if target.is_none() {
-        if let Some(ws_id) = query.workspace_id {
-            let list = workspace::load_workspaces().await;
-            if let Some(ws) = list.into_iter().find(|w| w.id == ws_id) {
-                target = Some(ws.path);
-            }
+    if target.is_none()
+        && let Some(ws_id) = query.workspace_id
+    {
+        let list = workspace::load_workspaces().await;
+        if let Some(ws) = list.into_iter().find(|w| w.id == ws_id) {
+            target = Some(ws.path);
         }
     }
 
     let Some(target_path) = target else {
-        return (StatusCode::BAD_REQUEST, Json(json!({"error": "path or workspaceId required"}))).into_response();
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "path or workspaceId required"})),
+        )
+            .into_response();
     };
 
     match workspace::list_files(&target_path).await {
@@ -366,12 +398,20 @@ struct FileContentQuery {
 
 async fn handle_get_file_content(Query(query): Query<FileContentQuery>) -> impl IntoResponse {
     let Some(path) = query.path else {
-        return (StatusCode::BAD_REQUEST, Json(json!({"error": "path required"}))).into_response();
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "path required"})),
+        )
+            .into_response();
     };
 
     match workspace::read_file_content(&path).await {
         Ok(res) => Json(json!(res)).into_response(),
-        Err((code, err)) => (StatusCode::from_u16(code).unwrap_or(StatusCode::BAD_REQUEST), Json(json!({"error": err}))).into_response(),
+        Err((code, err)) => (
+            StatusCode::from_u16(code).unwrap_or(StatusCode::BAD_REQUEST),
+            Json(json!({"error": err})),
+        )
+            .into_response(),
     }
 }
 
@@ -385,7 +425,11 @@ async fn handle_save_file_content(Json(body): Json<SaveFileContentReq>) -> impl 
     let path = body.path.unwrap_or_default().trim().to_string();
     let content = body.content.unwrap_or_default();
     if path.is_empty() {
-        return (StatusCode::BAD_REQUEST, Json(json!({"error": "path required"}))).into_response();
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "path required"})),
+        )
+            .into_response();
     }
 
     match workspace::write_file_content(&path, &content).await {
@@ -403,28 +447,50 @@ struct PreviewQuery {
 
 async fn handle_image_preview(Query(query): Query<PreviewQuery>) -> impl IntoResponse {
     let Some(p) = query.path else {
-        return (StatusCode::BAD_REQUEST, Json(json!({"ok": false, "error": "Missing path query parameter"}))).into_response();
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"ok": false, "error": "Missing path query parameter"})),
+        )
+            .into_response();
     };
 
     let path = PathBuf::from(&p);
-    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+    let ext = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
     let mime = match ext.as_str() {
         "png" => "image/png",
         "jpg" | "jpeg" => "image/jpeg",
         "webp" => "image/webp",
         "gif" => "image/gif",
         "svg" => "image/svg+xml",
-        _ => return (StatusCode::BAD_REQUEST, Json(json!({"ok": false, "error": "Unsupported image extension"}))).into_response(),
+        _ => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({"ok": false, "error": "Unsupported image extension"})),
+            )
+                .into_response();
+        }
     };
 
     match tokio::fs::read(&path).await {
         Ok(bytes) => {
             let mut res = Response::new(axum::body::Body::from(bytes));
-            res.headers_mut().insert(header::CONTENT_TYPE, HeaderValue::from_static(mime));
-            res.headers_mut().insert(header::CACHE_CONTROL, HeaderValue::from_static("public, max-age=3600"));
+            res.headers_mut()
+                .insert(header::CONTENT_TYPE, HeaderValue::from_static(mime));
+            res.headers_mut().insert(
+                header::CACHE_CONTROL,
+                HeaderValue::from_static("public, max-age=3600"),
+            );
             res
         }
-        Err(_) => (StatusCode::NOT_FOUND, Json(json!({"ok": false, "error": "Image file not found"}))).into_response(),
+        Err(_) => (
+            StatusCode::NOT_FOUND,
+            Json(json!({"ok": false, "error": "Image file not found"})),
+        )
+            .into_response(),
     }
 }
 
@@ -460,10 +526,15 @@ async fn handle_upload_image(
                     }
                 } else if name == "image" || name == "file" {
                     let file_name = field.file_name().unwrap_or("").to_string();
-                    if let Some(e) = file_name.split('.').last() {
+                    if let Some(e) = file_name.split('.').next_back() {
                         let e_lower = e.to_lowercase();
-                        if ["png", "jpg", "jpeg", "webp", "gif", "svg"].contains(&e_lower.as_str()) {
-                            ext = if e_lower == "jpeg" { "jpg".to_string() } else { e_lower };
+                        if ["png", "jpg", "jpeg", "webp", "gif", "svg"].contains(&e_lower.as_str())
+                        {
+                            ext = if e_lower == "jpeg" {
+                                "jpg".to_string()
+                            } else {
+                                e_lower
+                            };
                         }
                     }
                     if let Ok(bytes) = field.bytes().await {
@@ -473,12 +544,19 @@ async fn handle_upload_image(
             }
         }
     } else if content_type.contains("application/json") {
-        let bytes = axum::body::to_bytes(body.into_body(), 10 * 1024 * 1024).await.unwrap_or_default();
+        let bytes = axum::body::to_bytes(body.into_body(), 10 * 1024 * 1024)
+            .await
+            .unwrap_or_default();
         if let Ok(val) = serde_json::from_slice::<Value>(&bytes) {
             if let Some(s) = val.get("sessionId").and_then(|v| v.as_str()) {
                 session_id = s.to_string();
             }
-            let raw = val.get("image").or_else(|| val.get("data")).or_else(|| val.get("base64")).and_then(|v| v.as_str()).unwrap_or("");
+            let raw = val
+                .get("image")
+                .or_else(|| val.get("data"))
+                .or_else(|| val.get("base64"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
             if let Some((b, e)) = workspace::decode_image_data(raw) {
                 image_bytes = Some(b);
                 ext = e;
@@ -487,7 +565,11 @@ async fn handle_upload_image(
     }
 
     let Some(bytes) = image_bytes else {
-        return (StatusCode::BAD_REQUEST, Json(json!({"ok": false, "error": "Invalid image format"}))).into_response();
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"ok": false, "error": "Invalid image format"})),
+        )
+            .into_response();
     };
 
     let repo_path = if !session_id.is_empty() {
@@ -498,7 +580,11 @@ async fn handle_upload_image(
 
     match workspace::save_image_bytes(repo_path.as_deref(), &bytes, &ext).await {
         Ok(res) => Json(json!(res)).into_response(),
-        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"ok": false, "error": e}))).into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"ok": false, "error": e})),
+        )
+            .into_response(),
     }
 }
 
@@ -511,7 +597,11 @@ struct RepoQuery {
 
 async fn handle_git_status(Query(q): Query<RepoQuery>) -> impl IntoResponse {
     let Some(p) = q.path else {
-        return (StatusCode::BAD_REQUEST, Json(json!({"error": "path required"}))).into_response();
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "path required"})),
+        )
+            .into_response();
     };
     match git_ops::git_status(&p).await {
         Ok(res) => Json(json!(res)).into_response(),
@@ -529,7 +619,11 @@ struct DiffQuery {
 
 async fn handle_git_diff(Query(q): Query<DiffQuery>) -> impl IntoResponse {
     let Some(p) = q.path else {
-        return (StatusCode::BAD_REQUEST, Json(json!({"error": "path required"}))).into_response();
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "path required"})),
+        )
+            .into_response();
     };
     let staged_only = q.staged.as_deref() == Some("true");
     match git_ops::git_diff(&p, q.file.as_deref(), staged_only, q.commit.as_deref()).await {
@@ -548,10 +642,18 @@ struct CommitReq {
 
 async fn handle_git_commit(Json(b): Json<CommitReq>) -> impl IntoResponse {
     let Some(p) = b.path else {
-        return (StatusCode::BAD_REQUEST, Json(json!({"error": "path required"}))).into_response();
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "path required"})),
+        )
+            .into_response();
     };
     let Some(msg) = b.message else {
-        return (StatusCode::BAD_REQUEST, Json(json!({"error": "message required"}))).into_response();
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "message required"})),
+        )
+            .into_response();
     };
     let stage_all = b.stage_all != Some(false);
     match git_ops::git_commit(&p, &msg, stage_all).await {
@@ -562,7 +664,11 @@ async fn handle_git_commit(Json(b): Json<CommitReq>) -> impl IntoResponse {
 
 async fn handle_git_log(Query(q): Query<RepoQuery>) -> impl IntoResponse {
     let Some(p) = q.path else {
-        return (StatusCode::BAD_REQUEST, Json(json!({"error": "path required"}))).into_response();
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "path required"})),
+        )
+            .into_response();
     };
     match git_ops::git_log(&p).await {
         Ok(commits) => Json(json!({ "commits": commits })).into_response(),
@@ -579,7 +685,11 @@ struct GitStageReq {
 
 async fn handle_git_stage(Json(b): Json<GitStageReq>) -> impl IntoResponse {
     let Some(p) = b.path else {
-        return (StatusCode::BAD_REQUEST, Json(json!({"error": "path required"}))).into_response();
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "path required"})),
+        )
+            .into_response();
     };
     match git_ops::git_stage(&p, b.file.as_deref(), b.all == Some(true)).await {
         Ok(_) => Json(json!({ "ok": true })).into_response(),
@@ -589,7 +699,11 @@ async fn handle_git_stage(Json(b): Json<GitStageReq>) -> impl IntoResponse {
 
 async fn handle_git_unstage(Json(b): Json<GitStageReq>) -> impl IntoResponse {
     let Some(p) = b.path else {
-        return (StatusCode::BAD_REQUEST, Json(json!({"error": "path required"}))).into_response();
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "path required"})),
+        )
+            .into_response();
     };
     match git_ops::git_unstage(&p, b.file.as_deref(), b.all == Some(true)).await {
         Ok(_) => Json(json!({ "ok": true })).into_response(),
@@ -599,7 +713,11 @@ async fn handle_git_unstage(Json(b): Json<GitStageReq>) -> impl IntoResponse {
 
 async fn handle_git_discard(Json(b): Json<GitStageReq>) -> impl IntoResponse {
     let Some(p) = b.path else {
-        return (StatusCode::BAD_REQUEST, Json(json!({"error": "path required"}))).into_response();
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": "path required"})),
+        )
+            .into_response();
     };
     match git_ops::git_discard(&p, b.file.as_deref(), b.all == Some(true)).await {
         Ok(_) => Json(json!({ "ok": true })).into_response(),
@@ -613,7 +731,11 @@ async fn handle_get_agent_config() -> impl IntoResponse {
     let cfg = load_agent_config().await;
     let masked_key = if !cfg.api_key.is_empty() {
         if cfg.api_key.len() > 8 {
-            format!("{}...{}", &cfg.api_key[..4], &cfg.api_key[cfg.api_key.len() - 4..])
+            format!(
+                "{}...{}",
+                &cfg.api_key[..4],
+                &cfg.api_key[cfg.api_key.len() - 4..]
+            )
         } else {
             "****".to_string()
         }
@@ -639,7 +761,11 @@ async fn handle_get_agent_config() -> impl IntoResponse {
 async fn handle_save_agent_config(Json(b): Json<Value>) -> impl IntoResponse {
     match save_agent_config(&b).await {
         Ok(cfg) => Json(json!({ "ok": true, "config": cfg })).into_response(),
-        Err(e) => (StatusCode::BAD_REQUEST, Json(json!({ "ok": false, "error": e }))).into_response(),
+        Err(e) => (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "ok": false, "error": e })),
+        )
+            .into_response(),
     }
 }
 
@@ -657,14 +783,18 @@ struct AgentChatReq {
 async fn handle_agent_chat(Json(b): Json<AgentChatReq>) -> impl IntoResponse {
     let prompt = b.prompt.unwrap_or_default();
     if prompt.trim().is_empty() && b.images.is_empty() {
-        return (StatusCode::BAD_REQUEST, Json(json!({"ok": false, "error": "Prompt or images required"}))).into_response();
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"ok": false, "error": "Prompt or images required"})),
+        )
+            .into_response();
     }
 
     let mut cfg = load_agent_config().await;
-    if let Some(m) = b.model {
-        if !m.trim().is_empty() {
-            cfg.model = m;
-        }
+    if let Some(m) = b.model
+        && !m.trim().is_empty()
+    {
+        cfg.model = m;
     }
 
     let cwd = b.workspace_path.or(b.cwd).unwrap_or_else(|| {
@@ -680,16 +810,15 @@ async fn handle_agent_chat(Json(b): Json<AgentChatReq>) -> impl IntoResponse {
 
     let stream = stream::unfold(rx, |mut rx| async move {
         rx.recv().await.map(|msg| {
-            let event = Event::default().data(
-                msg.trim_end_matches("\n\n")
-                    .trim_start_matches("data: ")
-                    .to_string(),
-            );
+            let event =
+                Event::default().data(msg.trim_end_matches("\n\n").trim_start_matches("data: "));
             (Ok::<_, Infallible>(event), rx)
         })
     });
 
-    Sse::new(stream).keep_alive(KeepAlive::default()).into_response()
+    Sse::new(stream)
+        .keep_alive(KeepAlive::default())
+        .into_response()
 }
 
 // ---------------- System Status ----------------
@@ -703,7 +832,11 @@ async fn handle_system_status() -> impl IntoResponse {
 
     let total_gb = (total_b as f64) / (1024.0 * 1024.0 * 1024.0);
     let used_gb = (used_b as f64) / (1024.0 * 1024.0 * 1024.0);
-    let pct = if total_b > 0 { ((used_b as f64 / total_b as f64) * 100.0).round() as u64 } else { 0 };
+    let pct = if total_b > 0 {
+        ((used_b as f64 / total_b as f64) * 100.0).round() as u64
+    } else {
+        0
+    };
 
     Json(json!({
         "port": 3456,

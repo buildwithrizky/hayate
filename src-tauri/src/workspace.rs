@@ -145,10 +145,10 @@ pub async fn browse_dirs(dir: Option<String>) -> Result<BrowseResult, String> {
         if file_name.starts_with('.') {
             continue;
         }
-        if let Ok(ft) = entry.file_type().await {
-            if ft.is_dir() {
-                dirs.push(entry.path().to_string_lossy().to_string());
-            }
+        if let Ok(ft) = entry.file_type().await
+            && ft.is_dir()
+        {
+            dirs.push(entry.path().to_string_lossy().to_string());
         }
     }
     dirs.sort();
@@ -181,10 +181,10 @@ pub async fn list_files(target_path: &str) -> Result<FilesResult, String> {
         if let Ok(meta) = entry.metadata().await {
             is_directory = meta.is_dir();
             size = meta.len();
-            if let Ok(mtime) = meta.modified() {
-                if let Ok(dur) = mtime.duration_since(std::time::UNIX_EPOCH) {
-                    modified_time = dur.as_millis() as u64;
-                }
+            if let Ok(mtime) = meta.modified()
+                && let Ok(dur) = mtime.duration_since(std::time::UNIX_EPOCH)
+            {
+                modified_time = dur.as_millis() as u64;
             }
         }
 
@@ -240,7 +240,9 @@ pub async fn read_file_content(path_str: &str) -> Result<FileContentResult, (u16
 pub async fn write_file_content(path_str: &str, content: &str) -> Result<u64, String> {
     let path = PathBuf::from(path_str);
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).await.map_err(|e| e.to_string())?;
+        fs::create_dir_all(parent)
+            .await
+            .map_err(|e| e.to_string())?;
     }
     fs::write(&path, content)
         .await
@@ -264,27 +266,32 @@ pub async fn save_image_bytes(
         if let Ok(mut rd) = fs::read_dir(&ade_images_dir).await {
             while let Ok(Some(ent)) = rd.next_entry().await {
                 let name = ent.file_name().to_string_lossy().to_string();
-                if name.starts_with("image") {
-                    if let Some(num_part) = name.strip_prefix("image").and_then(|s| s.split('.').next()) {
-                        if let Ok(num) = num_part.parse::<u32>() {
-                            if num >= index {
-                                index = num + 1;
-                            }
-                        }
-                    }
+                if name.starts_with("image")
+                    && let Some(num_part) =
+                        name.strip_prefix("image").and_then(|s| s.split('.').next())
+                    && let Ok(num) = num_part.parse::<u32>()
+                    && num >= index
+                {
+                    index = num + 1;
                 }
             }
         }
 
         let filename = format!("image{index}.{ext}");
         let target_path = ade_images_dir.join(&filename);
-        fs::write(&target_path, bytes).await.map_err(|e| e.to_string())?;
+        fs::write(&target_path, bytes)
+            .await
+            .map_err(|e| e.to_string())?;
 
         // symlink in repo root: imageN.ext -> .ade/images/imageN.ext
         let symlink_path = Path::new(repo).join(&filename);
         let _ = fs::remove_file(&symlink_path).await;
         #[cfg(unix)]
-        let _ = tokio::fs::symlink(Path::new(".ade").join("images").join(&filename), &symlink_path).await;
+        let _ = tokio::fs::symlink(
+            Path::new(".ade").join("images").join(&filename),
+            &symlink_path,
+        )
+        .await;
 
         let target_str = target_path.to_string_lossy().to_string();
         Ok(UploadImageResult {
@@ -299,7 +306,9 @@ pub async fn save_image_bytes(
         let tmp = std::env::temp_dir();
         let filename = format!("image{index}.{ext}");
         let target_path = tmp.join(&filename);
-        fs::write(&target_path, bytes).await.map_err(|e| e.to_string())?;
+        fs::write(&target_path, bytes)
+            .await
+            .map_err(|e| e.to_string())?;
 
         let target_str = target_path.to_string_lossy().to_string();
         Ok(UploadImageResult {
@@ -314,20 +323,20 @@ pub async fn save_image_bytes(
 }
 
 pub fn decode_image_data(data_uri: &str) -> Option<(Vec<u8>, String)> {
-    if let Some(rest) = data_uri.strip_prefix("data:image/") {
-        if let Some((mime_type, b64)) = rest.split_once(";base64,") {
-            let ext = match mime_type {
-                "png" => "png",
-                "jpeg" | "jpg" => "jpg",
-                "webp" => "webp",
-                "gif" => "gif",
-                "svg+xml" => "svg",
-                _ => return None,
-            };
-            let engine = base64::engine::general_purpose::STANDARD;
-            if let Ok(bytes) = engine.decode(b64.trim()) {
-                return Some((bytes, ext.to_string()));
-            }
+    if let Some(rest) = data_uri.strip_prefix("data:image/")
+        && let Some((mime_type, b64)) = rest.split_once(";base64,")
+    {
+        let ext = match mime_type {
+            "png" => "png",
+            "jpeg" | "jpg" => "jpg",
+            "webp" => "webp",
+            "gif" => "gif",
+            "svg+xml" => "svg",
+            _ => return None,
+        };
+        let engine = base64::engine::general_purpose::STANDARD;
+        if let Ok(bytes) = engine.decode(b64.trim()) {
+            return Some((bytes, ext.to_string()));
         }
     }
     None
@@ -343,4 +352,48 @@ fn urlencoding(s: &str) -> String {
         }
     }
     result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_urlencoding() {
+        assert_eq!(urlencoding("abcXYZ123-_.~"), "abcXYZ123-_.~");
+        assert_eq!(urlencoding("/path/with space"), "%2Fpath%2Fwith%20space");
+    }
+
+    #[test]
+    fn test_decode_image_data_valid() {
+        // Base64 for "hello" -> aGVsbG8=
+        let uri = "data:image/png;base64,aGVsbG8=";
+        let decoded = decode_image_data(uri);
+        assert!(decoded.is_some());
+        let (bytes, ext) = decoded.unwrap();
+        assert_eq!(bytes, b"hello");
+        assert_eq!(ext, "png");
+    }
+
+    #[test]
+    fn test_decode_image_data_invalid() {
+        assert!(decode_image_data("not-a-data-uri").is_none());
+        assert!(decode_image_data("data:text/plain;base64,aGVsbG8=").is_none());
+    }
+
+    #[test]
+    fn test_workspace_serialization() {
+        let ws = Workspace {
+            id: "ws-1".to_string(),
+            name: "test-workspace".to_string(),
+            path: "/tmp/test".to_string(),
+            created_at: 12345678,
+        };
+        let json = serde_json::to_string(&ws).expect("serialize workspace");
+        assert!(json.contains("\"createdAt\":12345678"));
+
+        let deserialized: Workspace = serde_json::from_str(&json).expect("deserialize workspace");
+        assert_eq!(deserialized.id, "ws-1");
+        assert_eq!(deserialized.created_at, 12345678);
+    }
 }

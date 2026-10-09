@@ -1,4 +1,4 @@
-use portable_pty::{native_pty_system, Child, CommandBuilder, MasterPty, PtySize};
+use portable_pty::{Child, CommandBuilder, MasterPty, PtySize, native_pty_system};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io::{Read, Write};
@@ -169,7 +169,10 @@ impl PtyManager {
             let exit_code = if let Ok(mut lock) = sessions_map.lock() {
                 if let Some(entry) = lock.remove(&sid) {
                     if let Ok(mut child_lock) = entry.child.lock() {
-                        child_lock.wait().map(|status| status.exit_code() as i32).unwrap_or(0)
+                        child_lock
+                            .wait()
+                            .map(|status| status.exit_code() as i32)
+                            .unwrap_or(0)
                     } else {
                         0
                     }
@@ -200,7 +203,9 @@ impl PtyManager {
             writer
                 .write_all(data.as_bytes())
                 .map_err(|e| format!("Failed to write to PTY: {e}"))?;
-            writer.flush().map_err(|e| format!("Failed to flush PTY: {e}"))?;
+            writer
+                .flush()
+                .map_err(|e| format!("Failed to flush PTY: {e}"))?;
             Ok(())
         } else {
             Err("Session not found".to_string())
@@ -246,5 +251,11 @@ impl PtyManager {
         } else {
             Ok(())
         }
+    }
+}
+
+impl Default for PtyManager {
+    fn default() -> Self {
+        Self::new()
     }
 }

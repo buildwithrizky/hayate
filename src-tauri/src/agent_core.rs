@@ -1,7 +1,7 @@
 use futures_util::StreamExt;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use tokio::fs;
@@ -170,7 +170,10 @@ pub async fn tool_write_file(path_str: &str, content: &str, cwd: &str) -> Result
 pub async fn tool_bash(cmd: &str, cwd: &str) -> Result<String, String> {
     let home = std::env::var("HOME").unwrap_or_default();
     let curr = std::env::var("PATH").unwrap_or_default();
-    let ext_path = format!("{}/.bun/bin:/opt/homebrew/bin:/usr/local/bin:{}", home, curr);
+    let ext_path = format!(
+        "{}/.bun/bin:/opt/homebrew/bin:/usr/local/bin:{}",
+        home, curr
+    );
 
     let child = tokio::process::Command::new("sh")
         .arg("-c")
@@ -197,7 +200,10 @@ pub async fn tool_bash(cmd: &str, cwd: &str) -> Result<String, String> {
         res.push_str(&stderr);
     }
     if res.trim().is_empty() {
-        res = format!("(command exited with code {})", output.status.code().unwrap_or(0));
+        res = format!(
+            "(command exited with code {})",
+            output.status.code().unwrap_or(0)
+        );
     }
     Ok(truncate_50k(res))
 }
@@ -412,36 +418,39 @@ pub async fn run_react_agent_stream(
                     break;
                 }
 
-                if let Ok(v) = serde_json::from_str::<Value>(data_str) {
-                    if let Some(choices) = v.get("choices").and_then(|c| c.as_array()) {
-                        if let Some(first) = choices.first() {
-                            if let Some(delta) = first.get("delta") {
-                                if let Some(content) = delta.get("content").and_then(|c| c.as_str()) {
-                                    accumulated_content.push_str(content);
-                                    let _ = tx
-                                        .send(format!(
-                                            "data: {}\n\n",
-                                            json!({"type": "chunk", "text": content})
-                                        ))
-                                        .await;
-                                }
+                if let Ok(v) = serde_json::from_str::<Value>(data_str)
+                    && let Some(choices) = v.get("choices").and_then(|c| c.as_array())
+                    && let Some(first) = choices.first()
+                    && let Some(delta) = first.get("delta")
+                {
+                    if let Some(content) = delta.get("content").and_then(|c| c.as_str()) {
+                        accumulated_content.push_str(content);
+                        let _ = tx
+                            .send(format!(
+                                "data: {}\n\n",
+                                json!({"type": "chunk", "text": content})
+                            ))
+                            .await;
+                    }
 
-                                if let Some(tool_calls) = delta.get("tool_calls").and_then(|tc| tc.as_array()) {
-                                    for tc in tool_calls {
-                                        let idx = tc.get("index").and_then(|i| i.as_u64()).unwrap_or(0) as usize;
-                                        let entry = tool_calls_map.entry(idx).or_insert((String::new(), String::new(), String::new()));
-                                        if let Some(id) = tc.get("id").and_then(|s| s.as_str()) {
-                                            entry.0 = id.to_string();
-                                        }
-                                        if let Some(func) = tc.get("function") {
-                                            if let Some(name) = func.get("name").and_then(|n| n.as_str()) {
-                                                entry.1.push_str(name);
-                                            }
-                                            if let Some(args) = func.get("arguments").and_then(|a| a.as_str()) {
-                                                entry.2.push_str(args);
-                                            }
-                                        }
-                                    }
+                    if let Some(tool_calls) = delta.get("tool_calls").and_then(|tc| tc.as_array()) {
+                        for tc in tool_calls {
+                            let idx =
+                                tc.get("index").and_then(|i| i.as_u64()).unwrap_or(0) as usize;
+                            let entry = tool_calls_map.entry(idx).or_insert((
+                                String::new(),
+                                String::new(),
+                                String::new(),
+                            ));
+                            if let Some(id) = tc.get("id").and_then(|s| s.as_str()) {
+                                entry.0 = id.to_string();
+                            }
+                            if let Some(func) = tc.get("function") {
+                                if let Some(name) = func.get("name").and_then(|n| n.as_str()) {
+                                    entry.1.push_str(name);
+                                }
+                                if let Some(args) = func.get("arguments").and_then(|a| a.as_str()) {
+                                    entry.2.push_str(args);
                                 }
                             }
                         }
@@ -457,7 +466,10 @@ pub async fn run_react_agent_stream(
                 "content": accumulated_content
             }));
             let _ = tx
-                .send(format!("data: {}\n\n", json!({"type": "finish", "reason": "stop"})))
+                .send(format!(
+                    "data: {}\n\n",
+                    json!({"type": "finish", "reason": "stop"})
+                ))
                 .await;
             break;
         }
@@ -509,33 +521,60 @@ pub async fn run_react_agent_stream(
 
             let (output, is_error) = match name.as_str() {
                 "read_file" => {
-                    let p = parsed_args.get("path").and_then(|v| v.as_str()).unwrap_or("");
-                    let off = parsed_args.get("offset").and_then(|v| v.as_u64()).map(|u| u as usize);
-                    let lim = parsed_args.get("limit").and_then(|v| v.as_u64()).map(|u| u as usize);
+                    let p = parsed_args
+                        .get("path")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+                    let off = parsed_args
+                        .get("offset")
+                        .and_then(|v| v.as_u64())
+                        .map(|u| u as usize);
+                    let lim = parsed_args
+                        .get("limit")
+                        .and_then(|v| v.as_u64())
+                        .map(|u| u as usize);
                     match tool_read_file(p, off, lim, &cwd).await {
                         Ok(res) => (res, false),
                         Err(e) => (e, true),
                     }
                 }
                 "edit_file" => {
-                    let p = parsed_args.get("path").and_then(|v| v.as_str()).unwrap_or("");
-                    let old_t = parsed_args.get("oldText").and_then(|v| v.as_str()).unwrap_or("");
-                    let new_t = parsed_args.get("newText").and_then(|v| v.as_str()).unwrap_or("");
+                    let p = parsed_args
+                        .get("path")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+                    let old_t = parsed_args
+                        .get("oldText")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+                    let new_t = parsed_args
+                        .get("newText")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
                     match tool_edit_file(p, old_t, new_t, &cwd).await {
                         Ok(res) => (res, false),
                         Err(e) => (e, true),
                     }
                 }
                 "write_file" => {
-                    let p = parsed_args.get("path").and_then(|v| v.as_str()).unwrap_or("");
-                    let c = parsed_args.get("content").and_then(|v| v.as_str()).unwrap_or("");
+                    let p = parsed_args
+                        .get("path")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+                    let c = parsed_args
+                        .get("content")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
                     match tool_write_file(p, c, &cwd).await {
                         Ok(res) => (res, false),
                         Err(e) => (e, true),
                     }
                 }
                 "bash" => {
-                    let cmd_str = parsed_args.get("command").and_then(|v| v.as_str()).unwrap_or("");
+                    let cmd_str = parsed_args
+                        .get("command")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
                     let custom_cwd = parsed_args
                         .get("cwd")
                         .and_then(|v| v.as_str())

@@ -49,7 +49,6 @@ class StateManager {
     this.tabs = [];
     this.activeTabId = null;
     this.activeTabByWorkspace = {};
-    this.connectionStatus = "connected";
     this.isSidebarOpen = true;
     this.isManualAdding = false;
     this.editingWorkspaceId = null;
@@ -122,7 +121,6 @@ class StateManager {
 
   // Native Tauri PTY Communication
   async initPty() {
-    this.setConnectionStatus("connected");
     try {
       this.unlistenPty = await tauriListen("pty-message", (event) => {
         this.handleBackendMessage(event.payload);
@@ -140,20 +138,6 @@ class StateManager {
       console.error("pty_send error", err);
       return false;
     }
-  }
-
-  setConnectionStatus(status) {
-    this.connectionStatus = status;
-    this.renderConnectionStatus();
-  }
-
-  renderConnectionStatus() {
-    const el = document.getElementById("connection-status");
-    if (!el) return;
-    el.className = `status-badge ${this.connectionStatus}`;
-    const dot = `<span class="dot"></span>`;
-    const label = this.connectionStatus;
-    el.innerHTML = `${dot}<span>${label}</span>`;
   }
 
   handleBackendMessage(msg) {
@@ -1633,6 +1617,27 @@ class StateManager {
     }[tag] || tag));
   }
 
+  // Sidebar methods
+  toggleSidebar(forceState) {
+    const sb = document.getElementById("sidebar");
+    if (!sb) return;
+    if (typeof forceState === "boolean") {
+      this.isSidebarOpen = forceState;
+      sb.classList.toggle("collapsed", !forceState);
+    } else {
+      sb.classList.toggle("collapsed");
+      this.isSidebarOpen = !sb.classList.contains("collapsed");
+    }
+    const sbResizer = document.getElementById("sidebar-resizer");
+    if (sbResizer) {
+      sbResizer.classList.toggle("is-hidden", sb.classList.contains("collapsed"));
+    }
+    setTimeout(() => {
+      window.dispatchEvent(new Event("resize"));
+      if (this.activeTabId) this.fitTerminal(this.activeTabId);
+    }, 180);
+  }
+
   // Right Sidebar (Orca style) Methods
   getActiveWorkspace() {
     return this.workspaces.find((w) => w.id === this.activeWorkspaceId) || null;
@@ -1650,6 +1655,10 @@ class StateManager {
       rs.classList.remove("collapsed");
     } else {
       rs.classList.add("collapsed");
+    }
+    const rsResizer = document.getElementById("right-sidebar-resizer");
+    if (rsResizer) {
+      rsResizer.classList.toggle("is-hidden", !this.isRightSidebarOpen);
     }
     // Trigger window resize and terminal fit after layout transition
     setTimeout(() => {
@@ -2770,19 +2779,148 @@ class StateManager {
 
 }
 
+function setupSidebarResizers(app) {
+  const STORAGE_KEY_LEFT = "hayate_sidebar_left_width";
+  const STORAGE_KEY_RIGHT = "hayate_sidebar_right_width";
+  const DEFAULT_LEFT_WIDTH = 260;
+  const DEFAULT_RIGHT_WIDTH = 320;
+  const MIN_LEFT = 180;
+  const MIN_RIGHT = 240;
+
+  const leftSidebar = document.getElementById("sidebar");
+  const rightSidebar = document.getElementById("right-sidebar");
+  const leftResizer = document.getElementById("sidebar-resizer");
+  const rightResizer = document.getElementById("right-sidebar-resizer");
+
+  // Restore saved widths from localStorage
+  const savedLeft = localStorage.getItem(STORAGE_KEY_LEFT);
+  if (savedLeft && leftSidebar) {
+    const w = parseInt(savedLeft, 10);
+    if (!isNaN(w) && w >= MIN_LEFT && w <= 700) {
+      leftSidebar.style.width = `${w}px`;
+    }
+  }
+
+  const savedRight = localStorage.getItem(STORAGE_KEY_RIGHT);
+  if (savedRight && rightSidebar) {
+    const w = parseInt(savedRight, 10);
+    if (!isNaN(w) && w >= MIN_RIGHT && w <= 900) {
+      rightSidebar.style.width = `${w}px`;
+    }
+  }
+
+  const syncVisibility = () => {
+    if (leftResizer && leftSidebar) {
+      leftResizer.classList.toggle("is-hidden", leftSidebar.classList.contains("collapsed"));
+    }
+    if (rightResizer && rightSidebar) {
+      rightResizer.classList.toggle("is-hidden", rightSidebar.classList.contains("collapsed"));
+    }
+  };
+
+  syncVisibility();
+
+  const attachResizer = (resizer, isLeft) => {
+    if (!resizer) return;
+
+    let startX = 0;
+    let startWidth = 0;
+    let isDragging = false;
+    let rafId = null;
+
+    const onPointerDown = (e) => {
+      if (e.button !== 0) return;
+      const targetSidebar = isLeft ? leftSidebar : rightSidebar;
+      if (!targetSidebar || targetSidebar.classList.contains("collapsed")) return;
+
+      isDragging = true;
+      startX = e.clientX;
+      startWidth = targetSidebar.getBoundingClientRect().width;
+
+      resizer.setPointerCapture?.(e.pointerId);
+      resizer.classList.add("is-dragging");
+      document.body.classList.add("is-resizing");
+      e.preventDefault();
+    };
+
+    const onPointerMove = (e) => {
+      if (!isDragging) return;
+      const targetSidebar = isLeft ? leftSidebar : rightSidebar;
+      if (!targetSidebar) return;
+
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        const delta = isLeft ? (e.clientX - startX) : (startX - e.clientX);
+        const newRawWidth = startWidth + delta;
+        const maxAllowed = isLeft
+          ? Math.max(MIN_LEFT, Math.min(600, window.innerWidth - 300))
+          : Math.max(MIN_RIGHT, Math.min(800, window.innerWidth - 300));
+        const minAllowed = isLeft ? MIN_LEFT : MIN_RIGHT;
+
+        const clamped = Math.max(minAllowed, Math.min(maxAllowed, newRawWidth));
+        targetSidebar.style.width = `${clamped}px`;
+
+        if (app?.activeTabId) {
+          app.fitTerminal(app.activeTabId);
+        }
+      });
+    };
+
+    const onPointerUp = (e) => {
+      if (!isDragging) return;
+      isDragging = false;
+
+      if (rafId) cancelAnimationFrame(rafId);
+      resizer.classList.remove("is-dragging");
+      document.body.classList.remove("is-resizing");
+
+      try {
+        resizer.releasePointerCapture?.(e.pointerId);
+      } catch (_) {}
+
+      const targetSidebar = isLeft ? leftSidebar : rightSidebar;
+      if (targetSidebar) {
+        const currentWidth = Math.round(targetSidebar.getBoundingClientRect().width);
+        localStorage.setItem(isLeft ? STORAGE_KEY_LEFT : STORAGE_KEY_RIGHT, currentWidth.toString());
+      }
+
+      window.dispatchEvent(new Event("resize"));
+      if (app?.activeTabId) {
+        app.fitTerminal(app.activeTabId);
+      }
+    };
+
+    const onDblClick = () => {
+      const targetSidebar = isLeft ? leftSidebar : rightSidebar;
+      if (!targetSidebar) return;
+      const defaultW = isLeft ? DEFAULT_LEFT_WIDTH : DEFAULT_RIGHT_WIDTH;
+      targetSidebar.style.width = `${defaultW}px`;
+      localStorage.setItem(isLeft ? STORAGE_KEY_LEFT : STORAGE_KEY_RIGHT, defaultW.toString());
+      window.dispatchEvent(new Event("resize"));
+      if (app?.activeTabId) {
+        app.fitTerminal(app.activeTabId);
+      }
+    };
+
+    resizer.addEventListener("pointerdown", onPointerDown);
+    resizer.addEventListener("pointermove", onPointerMove);
+    resizer.addEventListener("pointerup", onPointerUp);
+    resizer.addEventListener("pointercancel", onPointerUp);
+    resizer.addEventListener("dblclick", onDblClick);
+  };
+
+  attachResizer(leftResizer, true);
+  attachResizer(rightResizer, false);
+}
+
 // Global App Initialization
 window.addEventListener("DOMContentLoaded", () => {
   const app = new StateManager();
+  setupSidebarResizers(app);
 
   // Sidebar toggle
   document.getElementById("toggle-sidebar-btn")?.addEventListener("click", () => {
-    const sb = document.getElementById("sidebar");
-    if (!sb) return;
-    sb.classList.toggle("collapsed");
-    setTimeout(() => {
-      window.dispatchEvent(new Event("resize"));
-      if (app.activeTabId) app.fitTerminal(app.activeTabId);
-    }, 180);
+    app.toggleSidebar();
   });
 
   // Folder Pick button
@@ -2959,6 +3097,22 @@ window.addEventListener("DOMContentLoaded", () => {
     }
 
     if (!isMod) return;
+
+    // Sidebar shortcuts: Cmd/Ctrl + B (left), Cmd/Ctrl + L (right)
+    if (!e.shiftKey && !e.altKey) {
+      if (lowerKey === "b") {
+        e.preventDefault();
+        e.stopPropagation();
+        app.toggleSidebar();
+        return;
+      }
+      if (lowerKey === "l") {
+        e.preventDefault();
+        e.stopPropagation();
+        app.toggleRightSidebar();
+        return;
+      }
+    }
 
     // Ctrl/Cmd + Shift + I / J / C (DevTools) or Ctrl/Cmd + Shift + R (Hard reload)
     if (e.shiftKey && (lowerKey === "i" || lowerKey === "j" || lowerKey === "c" || lowerKey === "r")) {

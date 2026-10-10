@@ -50,7 +50,8 @@ pub struct UploadImageResult {
 }
 
 pub fn get_hayate_dir() -> PathBuf {
-    if let Ok(dir) = std::env::var("HAYATE_CONFIG_DIR").or_else(|_| std::env::var("ADE_CONFIG_DIR")) {
+    if let Ok(dir) = std::env::var("HAYATE_CONFIG_DIR").or_else(|_| std::env::var("ADE_CONFIG_DIR"))
+    {
         PathBuf::from(dir)
     } else {
         let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());

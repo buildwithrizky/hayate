@@ -1,7 +1,7 @@
+use base64::Engine;
+use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use base64::Engine;
-use serde_json::{json, Value};
 use sysinfo::System;
 
 use crate::git_ops;
@@ -68,7 +68,10 @@ pub async fn update_workspace(
     path: Option<String>,
 ) -> Result<workspace::Workspace, String> {
     let mut list = workspace::load_workspaces().await;
-    let idx = list.iter().position(|w| w.id == id).ok_or_else(|| "Workspace not found".to_string())?;
+    let idx = list
+        .iter()
+        .position(|w| w.id == id)
+        .ok_or_else(|| "Workspace not found".to_string())?;
 
     let name = name.unwrap_or_default().trim().to_string();
     let path = path.unwrap_or_default().trim().to_string();
@@ -87,7 +90,10 @@ pub async fn update_workspace(
 #[tauri::command]
 pub async fn delete_workspace(id: String) -> Result<Value, String> {
     let mut list = workspace::load_workspaces().await;
-    let idx = list.iter().position(|w| w.id == id).ok_or_else(|| "Workspace not found".to_string())?;
+    let idx = list
+        .iter()
+        .position(|w| w.id == id)
+        .ok_or_else(|| "Workspace not found".to_string())?;
 
     let deleted = list.remove(idx);
     workspace::save_workspaces(&list).await?;
@@ -99,7 +105,11 @@ pub async fn get_files(
     path: String,
     workspace_id: Option<String>,
 ) -> Result<Vec<workspace::FileItem>, String> {
-    let mut target = if path.trim().is_empty() { None } else { Some(path) };
+    let mut target = if path.trim().is_empty() {
+        None
+    } else {
+        Some(path)
+    };
     if target.is_none()
         && let Some(ws_id) = workspace_id
     {
@@ -246,7 +256,9 @@ pub async fn upload_image(
         (decoded, ext)
     };
 
-    let repo_path = session_id.as_deref().and_then(|sid| state.get_repo_path(sid));
+    let repo_path = session_id
+        .as_deref()
+        .and_then(|sid| state.get_repo_path(sid));
     let res = workspace::save_image_bytes(repo_path.as_deref(), &bytes, &ext).await?;
     Ok(json!(res))
 }
@@ -302,10 +314,7 @@ pub async fn get_system_status() -> Result<Value, String> {
 }
 
 #[tauri::command]
-pub async fn pty_send(
-    msg: Value,
-    state: tauri::State<'_, Arc<PtyManager>>,
-) -> Result<(), String> {
+pub async fn pty_send(msg: Value, state: tauri::State<'_, Arc<PtyManager>>) -> Result<(), String> {
     let action = msg
         .get("action")
         .and_then(|v| v.as_str())

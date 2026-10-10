@@ -16,7 +16,10 @@ async fn check_and_apply_update(app: tauri::AppHandle) -> Result<(), Box<dyn std
             .download_and_install(
                 |chunk_length, content_length| {
                     downloaded += chunk_length;
-                    log::info!("Downloaded {downloaded}/{} bytes", content_length.unwrap_or(0));
+                    log::info!(
+                        "Downloaded {downloaded}/{} bytes",
+                        content_length.unwrap_or(0)
+                    );
                 },
                 || {
                     log::info!("Download finished, installing update");

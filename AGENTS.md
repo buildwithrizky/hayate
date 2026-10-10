@@ -9,18 +9,29 @@ Dilarang membuat perubahan arsitektur atau antarmuka tanpa menyelaraskan ke dua 
 
 ## Technical Rules
 
-### Frontend (Native ES Modules & CSS Design System)
-- Gunakan native ES Modules (`<script type="module">`, `import`/`export`).
-- Tanpa bundler (no Vite, Webpack, Rollup).
-- Pisahkan state dan event listener per domain (`terminal`, `agent`, `workspace`, `api`).
-- Dilarang membuat monolith file baru (no 3000-line files). Fitur baru wajib masuk modul terpisah di `public/js/`.
-- **Zero Hardcoded CSS Values (STRICT)**: Dilarang keras hardcode literal value di CSS (`px`, `rem`, `s`, `ms`, `#hex`, `rgba`) di luar blok `:root`. Semua property (color, spacing, gap, radius, font-size, font-weight, line-height, z-index, transition, border-width/style, width/height) wajib konsisten menggunakan CSS variable token `:root` (`var(--token)`).
+### File Size Hard Limits
+- **Maksimal 400–500 baris per file** untuk semua bahasa (CSS, JS, Rust).
+- File mendekati/melebihi 500 baris WAJIB dipecah ke submodul domain kohesif.
 
-### Backend (Rust / Axum)
-- Pisahkan domain logic dari routing Axum: handlers hanya parse request/response, core logic di modul domain masing-masing.
-- **Zero Panic**: banned `unwrap()` dan `expect()` pada request execution path. Gunakan `?` atau pattern matching.
+### CSS Organization
+- Semua styling berada di `public/css/` dipisah per concern (`tokens.css`, `base.css`, `layout.css`, `tabs.css`, `workspace.css`, `views.css`, `explorer.css`, `git.css`, `modals.css`).
+- Entry point: `public/css/index.css` via `@import`.
+- Monolithic single-file CSS dilarang keras.
+- **Zero Hardcoded CSS Values (STRICT)**: Dilarang keras hardcode literal value di CSS (`px`, `rem`, `s`, `ms`, `#hex`, `rgba`) di luar blok `:root`. Semua property wajib konsisten menggunakan token `:root` (`var(--token)`).
+
+### Frontend JS Organization
+- Native ES Modules di `public/js/` dengan `index.js` sebagai bootstrap entry point (`<script type="module">`).
+- Tanpa bundler (no Vite, Webpack, Rollup).
+- Subdomain wajib di folder/modul tersendiri (`public/js/views/`, `public/js/git/`, `workspace.js`, `tabs.js`, `state.js`, `api.js`, `layout.js`, `explorer.js`).
+- Monolith file dilarang keras.
+
+### Rust Backend Commands Organization
+- Tauri commands DILARANG ditumpuk di satu file monolith.
+- Semua command handler wajib dimodularisasi per domain di `src-tauri/src/commands/<domain>.rs` (contoh: `workspace.rs`, `fs.rs`, `git.rs`, `system.rs`).
+- Re-export seluruh handler via `src-tauri/src/commands/mod.rs`.
+- Pisahkan domain logic dari command handler: handler hanya parse/invoke, core logic di modul domain (`workspace.rs`, `git_ops.rs`, `pty_mgr.rs`).
+- **Zero Panic**: banned `unwrap()` dan `expect()` pada runtime path. Gunakan `?` atau pattern matching.
 - **Native Error Handling**: gunakan `std::fmt::Display` dan `std::error::Error` standar tanpa crate error fiktif (`thiserror` tidak terpasang di dependencies).
-- Map error domain ke HTTP status/response via Axum `IntoResponse`.
 
 ### Anti-Spaghetti Code
 - **Guard Clauses & Early Returns**: wajib gunakan guard clauses / early returns. Hindari nested `if` lebih dari 3 level.

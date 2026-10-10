@@ -1,0 +1,371 @@
+@import url('https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&family=JetBrains+Mono:ital,wght@0,300..800;1,300..800&display=swap');
+
+:root {
+  /* Surfaces & Backgrounds - Sokudo Palette */
+  --bg-app: #000000;
+  --bg-panel: #0f0f0f;
+  --bg-subtle: #141414;
+  --bg-hover: #1a1a1a;
+  --bg-active: #222222;
+  --bg-solid-white: #ffffff;
+  --glass-bg: rgba(15, 15, 15, 0.75);
+  --glass-bg-header: rgba(15, 15, 15, 0.85);
+  --glass-blur: blur(12px);
+  --modal-backdrop: rgba(0, 0, 0, 0.75);
+
+  /* Borders & Glassmorphism */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --border-focus: #0091ff;
+
+  /* Text Scales */
+  --text-main: #f5f5f7;
+  --text-muted: #9e9ea7;
+  --text-dim: #5c5c66;
+  --text-pure: #ffffff;
+  --text-translucent: rgba(255, 255, 255, 0.6);
+
+  /* Accent & Glow - Sokudo Electric Blue */
+  --accent-blue: #0091ff;
+  --accent-blue-hover: #1a9eff;
+  --accent-blue-subtle: rgba(0, 145, 255, 0.06);
+  --accent-blue-muted: rgba(0, 145, 255, 0.15);
+  --accent-blue-badge: rgba(0, 145, 255, 0.16);
+  --accent-blue-select: rgba(0, 145, 255, 0.3);
+  --accent-blue-border: rgba(0, 145, 255, 0.32);
+  --accent-blue-border-strong: rgba(0, 145, 255, 0.35);
+  --accent-blue-glow: 0 0 16px rgba(0, 145, 255, 0.35);
+  --accent-blue-glow-sm: 0 0 8px rgba(0, 145, 255, 0.4);
+  --accent-blue-glow-drag: 0 0 8px rgba(0, 145, 255, 0.45);
+  --accent-blue-glow-btn: 0 0 12px rgba(0, 145, 255, 0.25);
+  --accent-logo-glow: drop-shadow(0 0 6px rgba(29, 109, 255, 0.45));
+
+  /* Status Accents & Surfaces */
+  --accent-cyan: #00d2ff;
+  --accent-cyan-subtle: rgba(0, 210, 255, 0.15);
+  --accent-cyan-border: rgba(0, 210, 255, 0.3);
+
+  --accent-emerald: #10b981;
+  --accent-emerald-subtle: rgba(16, 185, 129, 0.08);
+  --accent-emerald-diff: rgba(16, 185, 129, 0.12);
+  --accent-emerald-line: rgba(16, 185, 129, 0.14);
+  --accent-emerald-muted: rgba(16, 185, 129, 0.15);
+  --accent-emerald-badge: rgba(16, 185, 129, 0.16);
+  --accent-emerald-border: rgba(16, 185, 129, 0.3);
+  --accent-emerald-glow: rgba(16, 185, 129, 0.4);
+
+  --accent-danger: #f43f5e;
+  --accent-danger-subtle: rgba(244, 63, 94, 0.08);
+  --accent-danger-diff: rgba(244, 63, 94, 0.12);
+  --accent-danger-line: rgba(244, 63, 94, 0.14);
+  --accent-danger-muted: rgba(244, 63, 94, 0.15);
+  --accent-danger-badge: rgba(244, 63, 94, 0.16);
+  --accent-danger-border: rgba(244, 63, 94, 0.4);
+
+  --accent-amber: #f59e0b;
+  --accent-amber-muted: rgba(245, 158, 11, 0.15);
+  --accent-amber-badge: rgba(245, 158, 11, 0.16);
+  --accent-amber-border: rgba(245, 158, 11, 0.3);
+
+  /* Surface Overlays */
+  --overlay-white-xs: rgba(255, 255, 255, 0.04);
+  --overlay-white-sm: rgba(255, 255, 255, 0.06);
+  --overlay-white-md: rgba(255, 255, 255, 0.08);
+  --overlay-white-lg: rgba(255, 255, 255, 0.12);
+
+  /* Shadow Scale */
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.4);
+  --shadow-header: 0 4px 20px rgba(0, 0, 0, 0.35);
+  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.6);
+  --shadow-dropdown: 0 10px 30px rgba(0, 0, 0, 0.8);
+  --shadow-modal: 0 24px 64px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  --shadow-focus-blue: 0 0 0 1px var(--accent-blue);
+  --shadow-focus-glow: 0 0 0 1px var(--accent-blue-glow);
+  --shadow-glow-xs: 0 0 5px var(--accent-emerald-glow);
+  --shadow-glow-sm: 0 0 8px var(--accent-emerald-glow);
+
+  /* Typography */
+  --font-sans: 'Figtree', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+
+  /* Spacing Scale */
+  --space-3xs: 1px;
+  --space-2xs: 2px;
+  --space-xs: 4px;
+  --space-sm: 6px;
+  --space-md: 8px;
+  --space-lg: 10px;
+  --space-xl: 12px;
+  --space-2xl: 14px;
+  --space-3xl: 24px;
+  --space-4xl: 32px;
+
+  /* Gap Scale (Standardized hierarchy) */
+  --gap-2xs: var(--space-2xs); /* 2px - tight inline badge/tags */
+  --gap-xs: var(--space-xs);   /* 4px - icon + text, compact items */
+  --gap-sm: var(--space-sm);   /* 6px - button internals, form controls */
+  --gap-md: var(--space-md);   /* 8px - header groups, card elements */
+  --gap-lg: var(--space-lg);   /* 10px - header left/right, sections */
+
+  /* Radii Scale (Sokudo Shapes) */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-input: 8px;
+  --radius-card: 14px;
+  --radius-pill: 9999px;
+  --radius-full: 50%;
+
+  /* Backdrop Filters */
+  --backdrop-header: blur(12px) saturate(1.4);
+  --backdrop-modal: blur(10px) saturate(1.3);
+
+  /* Border Widths & Styles */
+  --border-width-default: 1px;
+  --border-width-quote: 3px;
+  --border-default-subtle: var(--border-width-default) solid var(--border-subtle);
+  --border-default-strong: var(--border-width-default) solid var(--border-strong);
+  --border-default-transparent: var(--border-width-default) solid transparent;
+  --border-emerald: var(--border-width-default) solid var(--accent-emerald-border);
+  --border-blue: var(--border-width-default) solid var(--accent-blue-border);
+  --border-blue-strong: var(--border-width-default) solid var(--accent-blue-border-strong);
+  --border-cyan: var(--border-width-default) solid var(--accent-cyan-border);
+  --border-amber: var(--border-width-default) solid var(--accent-amber-border);
+  --border-quote: var(--border-width-quote) solid var(--accent-blue);
+
+  /* Typography Scale */
+  --font-size-2xs: 9px;
+  --font-size-xs: 10px;
+  --font-size-sm: 11px;
+  --font-size-sm-plus: 11.5px;
+  --font-size-base: 12px;
+  --font-size-md: 13px;
+  --font-size-md-code: 0.92em;
+  --font-size-h3: 1.15em;
+  --font-size-h2: 1.35em;
+  --font-size-h1: 1.7em;
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --line-height-reset: 1;
+  --line-height-tight: 1.1;
+  --line-height-heading: 1.25;
+  --line-height-code: 1.5;
+  --line-height-prose: 1.6;
+
+  /* Transitions & Animation Timings */
+  --ease-default: ease;
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 0.1s;
+  --duration-normal: 0.12s;
+  --duration-medium: 0.14s;
+  --duration-moderate: 0.15s;
+  --duration-slow: 0.18s;
+
+  --transition-color-fast: color var(--duration-fast) var(--ease-default);
+  --transition-bg-fast: background var(--duration-fast) var(--ease-default);
+  --transition-bg-color-fast: background var(--duration-fast) var(--ease-default), color var(--duration-fast) var(--ease-default);
+  --transition-color-normal: color var(--duration-moderate) var(--ease-default);
+  --transition-bg-normal: background var(--duration-normal) var(--ease-default);
+  --transition-bg-color-normal: background var(--duration-moderate) var(--ease-default), color var(--duration-moderate) var(--ease-default);
+  --transition-bg-border: background var(--duration-normal) var(--ease-default), border-color var(--duration-normal) var(--ease-default);
+  --transition-opacity: opacity var(--duration-normal) var(--ease-default);
+  --transition-transform: transform var(--duration-moderate) var(--ease-default);
+  --transition-all-normal: all var(--duration-normal) var(--ease-default);
+  --transition-btn: all var(--duration-medium) var(--ease-spring);
+  --transition-handle: background-color var(--duration-moderate) var(--ease-default), box-shadow var(--duration-moderate) var(--ease-default);
+  --transition-sidebar-left: width var(--duration-moderate) var(--ease-default), min-width var(--duration-moderate) var(--ease-default), margin-left var(--duration-moderate) var(--ease-default);
+  --transition-sidebar-right: width var(--duration-slow) var(--ease-spring), min-width var(--duration-slow) var(--ease-spring), margin-right var(--duration-slow) var(--ease-spring);
+
+  /* Dimensions & Layout Sizing */
+  --size-handle-line: 1px;
+  --size-scrollbar: 6px;
+  --size-tab-dot: 6px;
+  --size-indicator-dot: 8px;
+  --size-handle-grab: 9px;
+  --size-handle-offset: -4px;
+  --size-icon-xs: 14px;
+  --size-icon-sm: 16px;
+  --size-icon-md: 18px;
+  --size-avatar-xs: 20px;
+  --size-diff-sign: 22px;
+  --size-badge-min: 22px;
+  --size-tab-more-h: 24px;
+  --size-statusbar-h: 24px;
+  --size-btn-icon: 26px;
+  --size-tab-h: 28px;
+  --size-panel-header-h: 34px;
+  --size-bar-h: 36px;
+  --size-sidebar-header-h: 38px;
+  --size-tabs-bar-h: 38px;
+  --size-rs-nav-h: 38px;
+  --size-modal-header-h: 40px;
+  --size-app-header-h: 42px;
+  --size-diff-gutter-w: 44px;
+  --size-commit-input-min-h: 48px;
+  --size-line-numbers-w: 48px;
+
+  /* Layout Widths & Heights Bounds */
+  --width-sidebar-left: 260px;
+  --width-sidebar-left-min: 180px;
+  --width-sidebar-left-max: 600px;
+  --width-sidebar-right: 320px;
+  --width-sidebar-right-min: 240px;
+  --width-sidebar-right-max: 800px;
+  --width-modal: 780px;
+  --height-modal: 560px;
+  --width-dropdown-min: 170px;
+  --width-tab-max: 200px;
+  --width-subtext-max: 140px;
+  --width-preview-thumb-max: 220px;
+  --height-preview-thumb-max: 160px;
+  --height-commits-list-max: 220px;
+
+  /* Z-Index Hierarchy */
+  --z-textarea: 2;
+  --z-handle-grab: 2;
+  --z-sidebar-right: 5;
+  --z-handle: 10;
+  --z-statusbar: 10;
+  --z-header: 20;
+  --z-tabs-bar: 100;
+  --z-modal-backdrop: 100;
+  --z-modal-window: 101;
+  --z-dropdown-wrapper: 105;
+  --z-dropdown-menu: 9999;
+  --z-popover: 99999;
+
+  /* Opacity Scale */
+  --opacity-0: 0;
+  --opacity-disabled: 0.3;
+  --opacity-low: 0.45;
+  --opacity-medium: 0.6;
+  --opacity-high: 0.85;
+  --opacity-full: 1;
+
+  /* Dimensions, Percentages & Coordinates */
+  --coord-0: 0;
+  --coord-auto: auto;
+  --size-0: 0;
+  --full-pct: 100%;
+  --half-pct: 50%;
+  --pct-80: 80%;
+  --vw-full: 100vw;
+  --vh-full: 100vh;
+  --vw-modal-max: 90vw;
+  --vh-modal-max: 85vh;
+  --max-w-modal: 90vw;
+  --max-h-modal: 85vh;
+  --space-neg-2xs: calc(-1 * var(--space-2xs));
+
+  /* Typography Text Transforms, Letter Spacing & Alignment */
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0.02em;
+  --tracking-wide: 0.05em;
+  --tracking-wider: 0.08em;
+  --text-transform-uppercase: uppercase;
+  --text-decoration-underline: underline;
+  --text-decoration-line-through: line-through;
+  --text-align-center: center;
+  --text-align-left: left;
+  --text-align-right: right;
+  --valign-top: top;
+  --text-overflow-ellipsis: ellipsis;
+  --word-break-all: break-all;
+  --font-family-inherit: inherit;
+  --font-size-inherit: inherit;
+  --line-height-inherit: inherit;
+  --font-smoothing-webkit: antialiased;
+  --font-smoothing-moz: grayscale;
+
+  /* Display Keywords */
+  --display-none: none;
+  --display-flex: flex;
+  --display-inline-flex: inline-flex;
+  --display-block: block;
+  --display-inline-block: inline-block;
+  --display-grid: grid;
+  --display-table-row: table-row;
+
+  /* Position Keywords */
+  --pos-relative: relative;
+  --pos-absolute: absolute;
+  --pos-fixed: fixed;
+  --pos-sticky: sticky;
+
+  /* Flex Layout Keywords & Values */
+  --flex-1: 1;
+  --flex-auto: 0 1 auto;
+  --flex-fill: 1 1 0%;
+  --flex-none: none;
+  --flex-col: column;
+  --flex-row: row;
+  --flex-shrink-0: 0;
+  --flex-grow-1: 1;
+  --flex-nowrap: nowrap;
+  --flex-wrap: wrap;
+
+  /* Alignment & Justification Keywords */
+  --align-center: center;
+  --align-start: flex-start;
+  --align-end: flex-end;
+  --justify-center: center;
+  --justify-between: space-between;
+  --justify-start: flex-start;
+  --justify-end: flex-end;
+
+  /* Cursor & User Interaction Keywords */
+  --cursor-pointer: pointer;
+  --cursor-default: default;
+  --cursor-col-resize: col-resize;
+  --pointer-events-none: none;
+  --pointer-events-auto: auto;
+  --user-select-none: none;
+
+  /* Overflow Keywords */
+  --overflow-hidden: hidden;
+  --overflow-auto: auto;
+  --overflow-visible: visible;
+
+  /* Whitespace & Text Wrap Keywords */
+  --whitespace-nowrap: nowrap;
+  --whitespace-pre: pre;
+  --whitespace-pre-wrap: pre-wrap;
+
+  /* Transforms & Visual Filters */
+  --transform-rotate-neg90: rotate(-90deg);
+  --filter-brightness-hover: brightness(1.1);
+
+  /* Miscellaneous Layout & Element Properties */
+  --box-sizing-border: border-box;
+  --border-collapse: collapse;
+  --table-layout-auto: auto;
+  --object-fit-contain: contain;
+  --resize-none: none;
+  --resize-vertical: vertical;
+  --outline-none: none;
+  --border-none: none;
+  --bg-none: none;
+  --bg-transparent: transparent;
+  --text-transparent: transparent;
+  --tab-size-code: 2;
+  --transition-none: none;
+  --content-empty: "";
+
+  /* Prose Margins & Indents */
+  --space-md-li: 0.25em 0;
+  --space-md-list: 0.6em 0;
+  --space-md-p: 0.7em 0;
+  --space-md-quote: 0.8em 0;
+  --space-md-pre: 0.9em 0;
+  --space-md-table: 1em 0;
+  --space-md-hr: 1.5em 0;
+  --space-md-heading-top: 1.2em;
+  --space-md-heading-bottom: 0.6em;
+  --space-md-list-indent: 1.8em;
+}

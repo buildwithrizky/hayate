@@ -26,48 +26,85 @@
 
 ---
 
-## 2. Frontend Structure (`public/js/`)
+## 2. Frontend Structure (`public/`)
 
-Native ES Modules tanpa bundler. Pisah per domain praktis:
+Native ES Modules tanpa bundler. Modularisasi CSS dan JS per concern:
 
 ```
 public/
   index.html
-  style.css
+  css/
+    index.css               # Main CSS entry point (@import aggregator)
+    tokens.css              # Design tokens (:root variables)
+    base.css                # CSS reset & element base styles
+    layout.css              # Shell, split panels, resize handles
+    tabs.css                # Tab bar & tab items
+    workspace.css           # Workspace view container
+    views.css               # View panes (terminal, editor, diff, browser)
+    explorer.css            # File tree explorer & icons
+    git.css                 # Source control UI & diff indicators
+    modals.css              # Dialogs, prompts, palette modals
   js/
-    main.js                 # Entry point bootstrap
-    api.js                  # Fetch wrapper & HTTP/WS calls
-    terminal.js             # xterm.js setup & PTY WebSocket bridge
-    agent.js                # Agent prompt, SSE/WS streaming, chat UI
-    workspace.js            # File tree, file I/O, tabs, state
+    index.js                # Bootstrap entry point & app init
+    api.js                  # Tauri invoke wrapper & transport bridge
+    state.js                # Central application reactive state
+    layout.js               # Shell layout & pane resize logic
+    tabs.js                 # Tab manager & navigation
+    workspace.js            # Workspace session & project state
+    explorer.js             # File tree actions & navigation
+    views/
+      terminal.js           # xterm.js setup & PTY bridge
+      editor.js             # Prism editor & file viewer
+      diff.js               # Unified/split diff viewer
+      browser.js            # Preview iframe/webview browser
+    git/
+      index.js              # Git panel bootstrap & events
+      status.js             # Git status polling & staged/unstaged view
+      diff.js               # Git diff loader & parser
+      commits.js            # Commit history & commit action
 ```
 
-### Module Rules
-- `api.js`: single source of truth HTTP/WS transport.
-- `terminal.js`: lifecycle terminal dan resize handler.
-- `agent.js`: interaksi Hayate agent, render chat & stream output.
-- `workspace.js`: state file explorer & editor view.
-- No monolith: dilarang tumpuk semua logic di satu file >3000 baris.
+### Frontend Rules
+- Strict file limit 400–500 baris per file.
+- Single-file monolithic CSS / JS dilarang keras.
+- CSS wajib per concern di `public/css/`, entry point `index.css`.
+- JS wajib native ES modules di `public/js/` dengan bootstrap di `index.js`.
+- Subdomain views di `public/js/views/`, git domain di `public/js/git/`.
 
 ---
 
-## 3. Backend Architecture (Rust / Axum)
+## 3. Backend Architecture (Rust / Tauri Commands)
+
+```
+src-tauri/src/
+  main.rs                   # Binary entry point
+  lib.rs                    # Tauri app builder, plugin registration & invoke handlers
+  pty_mgr.rs                # PTY process manager & portable-pty session
+  workspace.rs              # Workspace domain logic & state
+  git_ops.rs                # Git command execution & parsing logic
+  commands/
+    mod.rs                  # Module registry & re-exports (`pub use ...`)
+    workspace.rs            # Workspace invoke commands (`open_workspace`, etc.)
+    fs.rs                   # Filesystem invoke commands (`read_dir`, `read_file`, etc.)
+    git.rs                  # Git invoke commands (`git_status`, `git_diff`, etc.)
+    system.rs               # System & platform commands
+```
 
 ### Layer Flow
-1. **Handlers (`http_server.rs`)**: Route matching, parameter parsing, return response.
-2. **Domain Modules**: Logic inti di modul terpisah (`pty_mgr.rs`, `workspace.rs`, `git_ops.rs`).
+1. **Commands Layer (`src-tauri/src/commands/<domain>.rs`)**:
+   - Handler command Tauri menerima IPC request dari frontend (`api.js`).
+   - Parse argumen, validasi input, panggil domain logic, return `Result<T, String>`.
+   - Re-export tersentralisasi via `commands/mod.rs`.
+2. **Domain Modules (`src-tauri/src/<domain>.rs`)**:
+   - Pure logic & core execution (`workspace.rs`, `git_ops.rs`, `pty_mgr.rs`).
+   - Tidak direct-couple ke payload command Tauri.
 
 ### Rules & Native Error Handling
-- **Zero Panic**: Haram `unwrap()` / `expect()` pada request handler.
+- **Zero Panic**: Haram `unwrap()` / `expect()` pada runtime command path. Gunakan `?` atau pattern matching.
 - **Native Error**: Pakai `std::fmt::Display` + `std::error::Error` standar (tanpa phantom crate seperti `thiserror`).
+- **File Limit**: Maksimal 400–500 baris per file. Command baru wajib masuk ke submodul domain masing-masing.
 
 ```rust
-use axum::{
-    http::StatusCode,
-    response::{IntoResponse, Response},
-    Json,
-};
-use serde_json::json;
 use std::{error::Error, fmt};
 
 #[derive(Debug)]
@@ -102,15 +139,9 @@ impl From<std::io::Error> for AppError {
     }
 }
 
-impl IntoResponse for AppError {
-    fn into_response(self) -> Response {
-        let (status, message) = match self {
-            Self::NotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
-            Self::Pty(_) => (StatusCode::BAD_REQUEST, self.to_string()),
-            Self::Io(_) => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
-        };
-
-        (status, Json(json!({ "error": message }))).into_response()
+impl From<AppError> for String {
+    fn from(err: AppError) -> Self {
+        err.to_string()
     }
 }
 ```

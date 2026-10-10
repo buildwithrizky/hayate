@@ -1,0 +1,236 @@
+/* App Layout */
+#app {
+  display: var(--display-flex);
+  flex-direction: var(--flex-col);
+  width: var(--vw-full);
+  height: var(--vh-full);
+}
+
+/* Header - Sleek floating glass surface ala Sokudo */
+.app-header {
+  height: var(--size-app-header-h);
+  background: var(--glass-bg-header);
+  backdrop-filter: var(--backdrop-header);
+  -webkit-backdrop-filter: var(--backdrop-header);
+  border-bottom: var(--border-default-subtle);
+  display: var(--display-flex);
+  align-items: var(--align-center);
+  justify-content: var(--justify-between);
+  padding: var(--size-0) var(--space-2xl);
+  user-select: var(--user-select-none);
+  flex-shrink: var(--flex-shrink-0);
+  box-shadow: var(--shadow-header);
+  position: var(--pos-relative);
+  z-index: var(--z-header);
+}
+
+.header-left, .header-right {
+  display: var(--display-flex);
+  align-items: var(--align-center);
+  gap: var(--gap-lg);
+}
+
+.app-title-group {
+  display: var(--display-flex);
+  align-items: var(--align-center);
+  gap: var(--gap-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--tracking-wider);
+  text-transform: var(--text-transform-uppercase);
+  color: var(--text-main);
+}
+
+.app-logo-mark {
+  width: var(--size-avatar-xs);
+  height: var(--size-avatar-xs);
+  display: var(--display-inline-flex);
+  align-items: var(--align-center);
+  justify-content: var(--justify-center);
+  flex-shrink: var(--flex-shrink-0);
+  filter: var(--accent-logo-glow);
+}
+
+.pulse-dot {
+  width: var(--size-indicator-dot);
+  height: var(--size-indicator-dot);
+  border-radius: var(--radius-pill);
+  background: var(--accent-emerald);
+  box-shadow: var(--shadow-glow-sm);
+}
+
+.app-badge {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-dim);
+  background: var(--overlay-white-xs);
+  border: var(--border-default-subtle);
+  padding: var(--space-2xs) var(--space-md);
+  border-radius: var(--radius-pill);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: var(--opacity-full); }
+  50% { opacity: var(--opacity-disabled); }
+}
+
+/* Split Area */
+.app-body {
+  display: var(--display-flex);
+  flex: var(--flex-1);
+  min-height: var(--size-0);
+  width: var(--full-pct);
+  max-width: var(--vw-full);
+  overflow: var(--overflow-hidden);
+}
+
+/* Sidebar */
+.app-sidebar {
+  width: var(--width-sidebar-left);
+  min-width: var(--width-sidebar-left-min);
+  max-width: var(--width-sidebar-left-max);
+  background: var(--bg-panel);
+  display: var(--display-flex);
+  flex-direction: var(--flex-col);
+  flex-shrink: var(--flex-shrink-0);
+  user-select: var(--user-select-none);
+  transition: var(--transition-sidebar-left);
+  overflow: var(--overflow-hidden);
+}
+
+.app-sidebar.collapsed {
+  display: var(--display-none) !important;
+  width: var(--size-0) !important;
+  min-width: var(--size-0) !important;
+  max-width: var(--size-0) !important;
+  margin: var(--size-0) !important;
+  padding: var(--size-0) !important;
+  border: var(--border-none) !important;
+  overflow: var(--overflow-hidden) !important;
+  pointer-events: var(--pointer-events-none);
+}
+
+/* Sidebar Resize Handles (Draggable Divider) */
+.resize-handle {
+  width: var(--size-handle-line);
+  background: var(--border-subtle);
+  cursor: var(--cursor-col-resize);
+  position: var(--pos-relative);
+  flex-shrink: var(--flex-shrink-0);
+  user-select: var(--user-select-none);
+  z-index: var(--z-statusbar);
+  transition: var(--transition-handle);
+}
+
+/* Grab area centered over divider line */
+.resize-handle::before {
+  content: var(--content-empty);
+  position: var(--pos-absolute);
+  top: var(--coord-0);
+  bottom: var(--coord-0);
+  left: var(--size-handle-offset);
+  width: var(--size-handle-grab);
+  cursor: var(--cursor-col-resize);
+  z-index: var(--z-handle-grab);
+}
+
+.resize-handle:hover,
+.resize-handle.is-dragging {
+  background: var(--accent-blue);
+  box-shadow: var(--accent-blue-glow-drag);
+}
+
+.resize-handle.is-hidden,
+.app-sidebar.collapsed + .resize-handle-left,
+.resize-handle-right:has(+ .right-sidebar.collapsed) {
+  display: var(--display-none) !important;
+}
+
+body.is-resizing {
+  user-select: var(--user-select-none) !important;
+  cursor: var(--cursor-col-resize) !important;
+}
+
+body.is-resizing iframe,
+body.is-resizing webview {
+  pointer-events: var(--pointer-events-none) !important;
+}
+
+body.is-resizing .app-sidebar,
+body.is-resizing .right-sidebar {
+  transition: var(--transition-none) !important;
+}
+
+.sidebar-header {
+  height: var(--size-sidebar-header-h);
+  padding: var(--size-0) var(--space-lg);
+  border-bottom: var(--border-default-subtle);
+  display: var(--display-flex);
+  align-items: var(--align-center);
+  justify-content: var(--justify-between);
+  background: var(--bg-subtle);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: var(--text-transform-uppercase);
+  color: var(--text-muted);
+}
+
+.sidebar-content {
+  flex: var(--flex-1);
+  overflow-y: var(--overflow-auto);
+  padding: var(--space-sm);
+  display: var(--display-flex);
+  flex-direction: var(--flex-col);
+  gap: var(--gap-xs);
+}
+
+/* Main Content */
+.app-main {
+  flex: var(--flex-fill);
+  display: var(--display-flex);
+  flex-direction: var(--flex-col);
+  min-width: var(--size-0);
+  max-width: var(--full-pct);
+  background: var(--bg-app);
+  overflow: var(--overflow-hidden);
+}
+
+/* Statusbar Footer (Full Width 100vw) */
+.app-statusbar {
+  width: var(--full-pct);
+  height: var(--size-statusbar-h);
+  min-height: var(--size-statusbar-h);
+  background: var(--bg-subtle);
+  border-top: var(--border-default-subtle);
+  display: var(--display-flex);
+  align-items: var(--align-center);
+  justify-content: var(--justify-between);
+  padding: var(--size-0) var(--space-lg);
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  user-select: var(--user-select-none);
+  flex-shrink: var(--flex-shrink-0);
+  z-index: var(--z-statusbar);
+}
+
+.statusbar-left,
+.statusbar-right {
+  display: var(--display-flex);
+  align-items: var(--align-center);
+  gap: var(--gap-md);
+  overflow: var(--overflow-hidden);
+  text-overflow: var(--text-overflow-ellipsis);
+  white-space: var(--whitespace-nowrap);
+}
+
+.sb-item {
+  display: var(--display-inline-flex);
+  align-items: var(--align-center);
+  gap: var(--gap-xs);
+}
+
+.sb-divider {
+  color: var(--border-strong);
+  font-size: var(--font-size-xs);
+}

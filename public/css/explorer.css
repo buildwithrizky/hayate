@@ -1,0 +1,297 @@
+/* ==========================================================================
+   Orca Right Sidebar: Explorer & Source Control
+   ========================================================================== */
+.right-sidebar {
+  width: var(--width-sidebar-right);
+  min-width: var(--width-sidebar-right-min);
+  max-width: var(--width-sidebar-right-max);
+  background: var(--bg-panel);
+  display: var(--display-flex);
+  flex-direction: var(--flex-col);
+  flex-shrink: var(--flex-shrink-0);
+  user-select: var(--user-select-none);
+  transition: var(--transition-sidebar-right);
+  overflow: var(--overflow-hidden);
+  z-index: var(--z-sidebar-right);
+}
+
+.right-sidebar.collapsed {
+  display: var(--display-none) !important;
+  width: var(--size-0) !important;
+  min-width: var(--size-0) !important;
+  max-width: var(--size-0) !important;
+  margin: var(--size-0) !important;
+  padding: var(--size-0) !important;
+  border: var(--border-none) !important;
+  overflow: var(--overflow-hidden) !important;
+  pointer-events: var(--pointer-events-none);
+}
+
+/* Nav Switcher */
+.rs-nav {
+  height: var(--size-tabs-bar-h);
+  padding: var(--size-0) var(--space-md);
+  display: var(--display-flex);
+  align-items: var(--align-center);
+  justify-content: var(--justify-between);
+  border-bottom: var(--border-default-subtle);
+  background: var(--bg-subtle);
+  flex-shrink: var(--flex-shrink-0);
+}
+
+.rs-nav-tabs {
+  display: var(--display-flex);
+  gap: var(--gap-xs);
+}
+
+.rs-nav-btn {
+  display: var(--display-inline-flex);
+  align-items: var(--align-center);
+  gap: var(--gap-sm);
+  background: var(--bg-transparent);
+  border: var(--border-default-transparent);
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  padding: var(--space-xs) var(--space-lg);
+  border-radius: var(--radius-pill);
+  cursor: var(--cursor-pointer);
+  transition: var(--transition-all-normal);
+}
+
+.rs-nav-btn:hover {
+  color: var(--text-main);
+  background: var(--bg-hover);
+  border-color: var(--border-subtle);
+}
+
+.rs-nav-btn.active {
+  color: var(--text-main);
+  background: var(--bg-active);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-sm);
+}
+
+.rs-badge {
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-bold);
+  padding: var(--space-3xs) var(--space-sm);
+  border-radius: var(--radius-pill);
+  background: var(--accent-blue-badge);
+  border: var(--border-blue);
+  color: var(--accent-cyan);
+}
+
+/* Panels */
+.rs-panel {
+  display: var(--display-none);
+  flex: var(--flex-1);
+  flex-direction: var(--flex-col);
+  min-height: var(--size-0);
+}
+
+.rs-panel.active {
+  display: var(--display-flex);
+}
+
+.rs-panel-header {
+  height: var(--size-panel-header-h);
+  padding: var(--size-0) var(--space-lg);
+  display: var(--display-flex);
+  align-items: var(--align-center);
+  justify-content: var(--justify-between);
+  border-bottom: var(--border-default-subtle);
+  background: var(--bg-panel);
+  flex-shrink: var(--flex-shrink-0);
+}
+
+.rs-panel-title {
+  display: var(--display-flex);
+  align-items: var(--align-center);
+  gap: var(--gap-md);
+  min-width: var(--size-0);
+}
+
+.rs-panel-label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--tracking-wider);
+  color: var(--text-dim);
+  text-transform: var(--text-transform-uppercase);
+}
+
+.rs-subtext {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  max-width: var(--width-subtext-max);
+  white-space: var(--whitespace-nowrap);
+  overflow: var(--overflow-hidden);
+  text-overflow: var(--text-overflow-ellipsis);
+}
+
+.rs-branch-pill {
+  font-size: var(--font-size-xs);
+  font-family: var(--font-mono);
+  background: var(--bg-subtle);
+  border: var(--border-default-subtle);
+  color: var(--accent-cyan);
+  padding: var(--space-3xs) var(--space-md);
+  border-radius: var(--radius-pill);
+  max-width: var(--width-subtext-max);
+  white-space: var(--whitespace-nowrap);
+  overflow: var(--overflow-hidden);
+  text-overflow: var(--text-overflow-ellipsis);
+}
+
+.rs-panel-body {
+  flex: var(--flex-1);
+  overflow-y: var(--overflow-auto);
+  overflow-x: var(--overflow-hidden);
+  padding: var(--space-sm);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-base);
+}
+
+.rs-empty {
+  padding: var(--space-3xl) var(--space-xl);
+  text-align: var(--text-align-center);
+  color: var(--text-dim);
+  font-size: var(--font-size-sm);
+}
+
+/* File Tree & Hierarchical View */
+.rs-file-item {
+  display: var(--display-flex);
+  align-items: var(--align-center);
+  gap: var(--gap-sm);
+  padding: var(--space-xs) var(--space-md);
+  border-radius: var(--radius-sm);
+  cursor: var(--cursor-pointer);
+  color: var(--text-main);
+  transition: var(--transition-bg-color-fast);
+  white-space: var(--whitespace-nowrap);
+  overflow: var(--overflow-hidden);
+  text-overflow: var(--text-overflow-ellipsis);
+  position: var(--pos-relative);
+  user-select: var(--user-select-none);
+}
+
+.rs-file-item:hover {
+  background: var(--bg-hover);
+}
+
+.rs-chevron {
+  display: var(--display-inline-flex);
+  align-items: var(--align-center);
+  justify-content: var(--justify-center);
+  width: var(--size-icon-xs);
+  height: var(--size-icon-xs);
+  font-size: var(--font-size-xs);
+  color: var(--text-dim);
+  flex-shrink: var(--flex-shrink-0);
+  transition: var(--transition-transform);
+}
+.rs-file-item.is-dir.open .rs-chevron {
+  color: var(--text-main);
+}
+
+.rs-file-item.is-dir {
+  font-weight: var(--font-weight-medium);
+  color: var(--text-main);
+}
+
+.rs-file-item.is-dir:hover {
+  color: var(--text-pure);
+}
+
+.rs-file-icon {
+  font-size: var(--font-size-base);
+  width: var(--size-icon-xs);
+  text-align: var(--text-align-center);
+  flex-shrink: var(--flex-shrink-0);
+  opacity: var(--opacity-high);
+}
+
+/* Tree Item Name */
+.rs-file-name {
+  flex: var(--flex-1);
+  overflow: var(--overflow-hidden);
+  text-overflow: var(--text-overflow-ellipsis);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm-plus);
+  color: var(--text-main);
+  transition: var(--transition-color-fast);
+}
+
+.rs-file-item:hover .rs-file-name {
+  color: var(--text-pure);
+}
+
+.rs-tree-children {
+  display: var(--display-flex);
+  flex-direction: var(--flex-col);
+  margin-left: var(--space-lg);
+  border-left: var(--border-default-subtle);
+  padding-left: var(--space-2xs);
+}
+
+/* Git Ignored Files & Folders */
+.rs-file-item.is-ignored .rs-file-name,
+.rs-file-item.is-ignored.is-dir,
+.rs-git-item.git-ignored .rs-git-path {
+  color: var(--text-dim) !important;
+}
+
+.rs-file-item.is-ignored:hover .rs-file-name,
+.rs-file-item.is-ignored.is-dir:hover {
+  color: var(--text-muted) !important;
+}
+
+.rs-file-item.is-ignored .rs-file-icon {
+  opacity: var(--opacity-low);
+}
+
+.rs-git-badge.ignored {
+  background: var(--overlay-white-sm);
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+/* Sokudo Semantic Git Status Colors */
+.rs-file-item.git-U .rs-file-name,
+.rs-git-item.git-U .rs-git-path {
+  color: var(--accent-emerald);
+}
+.rs-file-item.git-M .rs-file-name,
+.rs-git-item.git-M .rs-git-path {
+  color: var(--accent-amber);
+}
+.rs-file-item.git-A .rs-file-name,
+.rs-git-item.git-A .rs-git-path {
+  color: var(--accent-emerald);
+}
+.rs-file-item.git-D .rs-file-name,
+.rs-git-item.git-D .rs-git-path {
+  color: var(--accent-danger);
+  text-decoration: var(--text-decoration-line-through);
+}
+
+.rs-git-badge {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  width: var(--size-icon-sm);
+  height: var(--size-icon-sm);
+  border-radius: var(--radius-sm);
+  display: var(--display-inline-flex);
+  align-items: var(--align-center);
+  justify-content: var(--justify-center);
+  flex-shrink: var(--flex-shrink-0);
+  margin-left: var(--space-xs);
+}
+
+.rs-git-badge.M { background: var(--accent-amber-badge); color: var(--accent-amber); }
+.rs-git-badge.A { background: var(--accent-emerald-badge); color: var(--accent-emerald); }
+.rs-git-badge.D { background: var(--accent-danger-badge); color: var(--accent-danger); }
+.rs-git-badge.U { background: var(--accent-emerald-badge); color: var(--accent-emerald); }
+.rs-git-badge.\? { background: var(--accent-emerald-badge); color: var(--accent-emerald); }

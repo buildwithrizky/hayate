@@ -1,0 +1,40 @@
+* {
+  box-sizing: var(--box-sizing-border);
+  margin: var(--size-0);
+  padding: var(--size-0);
+}
+
+html, body {
+  width: var(--full-pct);
+  height: var(--full-pct);
+  overflow: var(--overflow-hidden);
+  background-color: var(--bg-app);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-md);
+  -webkit-font-smoothing: var(--font-smoothing-webkit);
+  -moz-osx-font-smoothing: var(--font-smoothing-moz);
+}
+
+/* Selection & Custom Scrollbars - Sokudo Theme */
+::selection {
+  background: var(--accent-blue-select);
+  color: var(--text-pure);
+}
+
+::-webkit-scrollbar {
+  width: var(--size-scrollbar);
+  height: var(--size-scrollbar);
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-app);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--overlay-white-lg);
+  border-radius: var(--radius-pill);
+  border: var(--border-default-transparent);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-blue);
+  box-shadow: var(--accent-blue-glow-sm);
+}

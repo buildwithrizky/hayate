@@ -1,6 +1,6 @@
 # Hayate Design System — Tokens
 
-Dokumentasi token aktif dan aturan styling Sokudo (`https://sokudo.dev`) di `public/style.css`.
+Dokumentasi token aktif dan aturan styling Sokudo (`https://sokudo.dev`) di `public/css/index.css`.
 
 ---
 
@@ -294,6 +294,8 @@ Dokumentasi token aktif dan aturan styling Sokudo (`https://sokudo.dev`) di `pub
 | `--flex-row` | `row` | Flex direction horizontal |
 | `--flex-shrink-0` | `0` | Mencegah elemen menyusut |
 | `--flex-grow-1` | `1` | Elemen mengembang mengisi sisa space |
+| `--flex-nowrap` | `nowrap` | Elemen flex tidak wrap |
+| `--flex-wrap` | `wrap` | Elemen flex wrap jika ruang habis |
 
 ### Alignment & Justification Keywords
 | Token | Nilai | Penggunaan |

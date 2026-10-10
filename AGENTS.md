@@ -9,11 +9,12 @@ Dilarang membuat perubahan arsitektur atau antarmuka tanpa menyelaraskan ke dua 
 
 ## Technical Rules
 
-### Frontend (Native ES Modules)
+### Frontend (Native ES Modules & CSS Design System)
 - Gunakan native ES Modules (`<script type="module">`, `import`/`export`).
 - Tanpa bundler (no Vite, Webpack, Rollup).
 - Pisahkan state dan event listener per domain (`terminal`, `agent`, `workspace`, `api`).
 - Dilarang membuat monolith file baru (no 3000-line files). Fitur baru wajib masuk modul terpisah di `public/js/`.
+- **Zero Hardcoded CSS Values (STRICT)**: Dilarang keras hardcode literal value di CSS (`px`, `rem`, `s`, `ms`, `#hex`, `rgba`) di luar blok `:root`. Semua property (color, spacing, gap, radius, font-size, font-weight, line-height, z-index, transition, border-width/style, width/height) wajib konsisten menggunakan CSS variable token `:root` (`var(--token)`).
 
 ### Backend (Rust / Axum)
 - Pisahkan domain logic dari routing Axum: handlers hanya parse request/response, core logic di modul domain masing-masing.

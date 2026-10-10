@@ -1,8 +1,9 @@
+use std::sync::Arc;
+use tauri::Emitter;
 use tauri_plugin_updater::UpdaterExt;
 
-pub mod agent_core;
+pub mod commands;
 pub mod git_ops;
-pub mod http_server;
 pub mod pty_mgr;
 pub mod workspace;
 
@@ -30,9 +31,12 @@ async fn check_and_apply_update(app: tauri::AppHandle) -> Result<(), Box<dyn std
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let pty_manager = Arc::new(pty_mgr::PtyManager::new());
+
     tauri::Builder::default()
+        .manage(Arc::clone(&pty_manager))
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .setup(|app| {
+        .setup(move |app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
                     tauri_plugin_log::Builder::default()
@@ -53,39 +57,40 @@ pub fn run() {
                 }
             });
 
-            let port = std::env::var("PORT")
-                .ok()
-                .and_then(|p| p.parse::<u16>().ok())
-                .unwrap_or(3456);
-
-            // Spawn embedded Axum HTTP + WS server on 127.0.0.1:port
-            let server_handle = app_handle.clone();
+            // Background listener forwarding PTY messages as Tauri event "pty-message"
+            let pty_listener_handle = app_handle.clone();
+            let mut pty_rx = pty_manager.subscribe();
             tauri::async_runtime::spawn(async move {
-                if let Err(e) = http_server::start_server(port, Some(server_handle)).await {
-                    eprintln!("ADE embedded server error: {e}");
-                }
-            });
-
-            // Wait until Axum server binds and responds before webview renders/navigates
-            tauri::async_runtime::block_on(async move {
-                for _ in 0..50 {
-                    if let Ok(Ok(stream)) = tokio::time::timeout(
-                        std::time::Duration::from_millis(100),
-                        tokio::net::TcpStream::connect(format!("127.0.0.1:{port}")),
-                    )
-                    .await
-                    {
-                        drop(stream);
-                        log::info!("Embedded Axum HTTP server confirmed listening on port {port}");
-                        return;
+                while let Ok(msg) = pty_rx.recv().await {
+                    if let Err(e) = pty_listener_handle.emit("pty-message", msg) {
+                        log::error!("Failed to emit pty-message event: {e}");
                     }
-                    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
                 }
-                log::warn!("Axum server wait timed out before TCP bind check passed");
             });
 
             Ok(())
         })
+        .invoke_handler(tauri::generate_handler![
+            commands::pick_folder,
+            commands::get_workspaces,
+            commands::create_workspace,
+            commands::update_workspace,
+            commands::delete_workspace,
+            commands::get_files,
+            commands::get_file_content,
+            commands::save_file_content,
+            commands::get_git_status,
+            commands::get_git_diff,
+            commands::git_commit,
+            commands::get_git_log,
+            commands::git_stage,
+            commands::git_unstage,
+            commands::git_discard,
+            commands::upload_image,
+            commands::get_image_preview,
+            commands::get_system_status,
+            commands::pty_send,
+        ])
         .run(tauri::generate_context!())
         .expect("error while building tauri application");
 }

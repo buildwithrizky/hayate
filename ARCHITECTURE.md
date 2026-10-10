@@ -55,7 +55,7 @@ public/
 
 ### Layer Flow
 1. **Handlers (`http_server.rs`)**: Route matching, parameter parsing, return response.
-2. **Domain Modules**: Logic inti di modul terpisah (`pty_mgr.rs`, `agent_core.rs`, `workspace.rs`, `git_ops.rs`).
+2. **Domain Modules**: Logic inti di modul terpisah (`pty_mgr.rs`, `workspace.rs`, `git_ops.rs`).
 
 ### Rules & Native Error Handling
 - **Zero Panic**: Haram `unwrap()` / `expect()` pada request handler.

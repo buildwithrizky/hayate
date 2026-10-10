@@ -25,12 +25,6 @@ pub struct FileItem {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct BrowseResult {
-    pub current: String,
-    pub dirs: Vec<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
 pub struct FilesResult {
     pub path: String,
     pub items: Vec<FileItem>,
@@ -55,17 +49,17 @@ pub struct UploadImageResult {
     pub preview_url: String,
 }
 
-pub fn get_ade_dir() -> PathBuf {
-    if let Ok(dir) = std::env::var("ADE_CONFIG_DIR") {
+pub fn get_hayate_dir() -> PathBuf {
+    if let Ok(dir) = std::env::var("HAYATE_CONFIG_DIR").or_else(|_| std::env::var("ADE_CONFIG_DIR")) {
         PathBuf::from(dir)
     } else {
         let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-        PathBuf::from(home).join(".ade")
+        PathBuf::from(home).join(".hayate")
     }
 }
 
 pub fn get_workspaces_file() -> PathBuf {
-    get_ade_dir().join("workspaces.json")
+    get_hayate_dir().join("workspaces.json")
 }
 
 pub async fn load_workspaces() -> Vec<Workspace> {
@@ -77,10 +71,10 @@ pub async fn load_workspaces() -> Vec<Workspace> {
 }
 
 pub async fn save_workspaces(list: &[Workspace]) -> Result<(), String> {
-    let dir = get_ade_dir();
+    let dir = get_hayate_dir();
     fs::create_dir_all(&dir)
         .await
-        .map_err(|e| format!("Failed to create ADE config dir: {e}"))?;
+        .map_err(|e| format!("Failed to create Hayate config dir: {e}"))?;
     let file = get_workspaces_file();
     let json = serde_json::to_string_pretty(list).map_err(|e| e.to_string())?;
     fs::write(&file, json)
@@ -126,37 +120,6 @@ pub async fn pick_folder_dialog() -> Result<Option<Workspace>, String> {
     } else {
         Ok(None)
     }
-}
-
-pub async fn browse_dirs(dir: Option<String>) -> Result<BrowseResult, String> {
-    let target = if let Some(d) = dir {
-        PathBuf::from(d)
-    } else {
-        let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-        PathBuf::from(home)
-    };
-
-    let target = target.canonicalize().map_err(|e| e.to_string())?;
-    let mut entries = fs::read_dir(&target).await.map_err(|e| e.to_string())?;
-    let mut dirs = Vec::new();
-
-    while let Ok(Some(entry)) = entries.next_entry().await {
-        let file_name = entry.file_name().to_string_lossy().to_string();
-        if file_name.starts_with('.') {
-            continue;
-        }
-        if let Ok(ft) = entry.file_type().await
-            && ft.is_dir()
-        {
-            dirs.push(entry.path().to_string_lossy().to_string());
-        }
-    }
-    dirs.sort();
-
-    Ok(BrowseResult {
-        current: target.to_string_lossy().to_string(),
-        dirs,
-    })
 }
 
 pub async fn list_files(target_path: &str) -> Result<FilesResult, String> {
@@ -258,12 +221,12 @@ pub async fn save_image_bytes(
     let mut index = 1u32;
 
     if let Some(repo) = repo_path {
-        let ade_images_dir = Path::new(repo).join(".ade").join("images");
-        fs::create_dir_all(&ade_images_dir)
+        let hayate_images_dir = Path::new(repo).join(".hayate").join("images");
+        fs::create_dir_all(&hayate_images_dir)
             .await
             .map_err(|e| e.to_string())?;
 
-        if let Ok(mut rd) = fs::read_dir(&ade_images_dir).await {
+        if let Ok(mut rd) = fs::read_dir(&hayate_images_dir).await {
             while let Ok(Some(ent)) = rd.next_entry().await {
                 let name = ent.file_name().to_string_lossy().to_string();
                 if name.starts_with("image")
@@ -278,17 +241,17 @@ pub async fn save_image_bytes(
         }
 
         let filename = format!("image{index}.{ext}");
-        let target_path = ade_images_dir.join(&filename);
+        let target_path = hayate_images_dir.join(&filename);
         fs::write(&target_path, bytes)
             .await
             .map_err(|e| e.to_string())?;
 
-        // symlink in repo root: imageN.ext -> .ade/images/imageN.ext
+        // symlink in repo root: imageN.ext -> .hayate/images/imageN.ext
         let symlink_path = Path::new(repo).join(&filename);
         let _ = fs::remove_file(&symlink_path).await;
         #[cfg(unix)]
         let _ = tokio::fs::symlink(
-            Path::new(".ade").join("images").join(&filename),
+            Path::new(".hayate").join("images").join(&filename),
             &symlink_path,
         )
         .await;
@@ -300,7 +263,7 @@ pub async fn save_image_bytes(
             relative_path: filename.clone(),
             token: format!("[{filename}]"),
             label: format!("Image {index}"),
-            preview_url: format!("/api/image-preview?path={}", urlencoding(&target_str)),
+            preview_url: String::new(),
         })
     } else {
         let tmp = std::env::temp_dir();
@@ -317,7 +280,7 @@ pub async fn save_image_bytes(
             relative_path: filename.clone(),
             token: format!("[{filename}]"),
             label: format!("Image {index}"),
-            preview_url: format!("/api/image-preview?path={}", urlencoding(&target_str)),
+            preview_url: String::new(),
         })
     }
 }
@@ -342,27 +305,9 @@ pub fn decode_image_data(data_uri: &str) -> Option<(Vec<u8>, String)> {
     None
 }
 
-fn urlencoding(s: &str) -> String {
-    let mut result = String::new();
-    for b in s.bytes() {
-        if b.is_ascii_alphanumeric() || b == b'-' || b == b'_' || b == b'.' || b == b'~' {
-            result.push(b as char);
-        } else {
-            result.push_str(&format!("%{:02X}", b));
-        }
-    }
-    result
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_urlencoding() {
-        assert_eq!(urlencoding("abcXYZ123-_.~"), "abcXYZ123-_.~");
-        assert_eq!(urlencoding("/path/with space"), "%2Fpath%2Fwith%20space");
-    }
 
     #[test]
     fn test_decode_image_data_valid() {
@@ -395,5 +340,11 @@ mod tests {
         let deserialized: Workspace = serde_json::from_str(&json).expect("deserialize workspace");
         assert_eq!(deserialized.id, "ws-1");
         assert_eq!(deserialized.created_at, 12345678);
+    }
+
+    #[test]
+    fn test_get_hayate_dir_fallback() {
+        let dir = get_hayate_dir();
+        assert!(dir.ends_with(".hayate") || dir.to_string_lossy().contains("hayate"));
     }
 }

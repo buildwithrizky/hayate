@@ -12,12 +12,12 @@
     }
   },
   "build": {
-    "frontendDist": "http://localhost:3456",
-    "devUrl": "http://localhost:3456",
+    "frontendDist": "../public",
     "beforeDevCommand": null,
     "beforeBuildCommand": null
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
         "title": "Hayate",

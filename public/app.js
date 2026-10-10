@@ -27,6 +27,21 @@ const TERM_THEME = {
   brightWhite: "#ffffff"
 };
 
+// Tauri IPC Helper (Tauri v2 global API)
+const tauriInvoke = (cmd, args = {}) => {
+  if (typeof window !== "undefined" && window.__TAURI__?.core?.invoke) {
+    return window.__TAURI__.core.invoke(cmd, args);
+  }
+  return Promise.reject(new Error("Tauri IPC not available"));
+};
+
+const tauriListen = (event, handler) => {
+  if (typeof window !== "undefined" && window.__TAURI__?.event?.listen) {
+    return window.__TAURI__.event.listen(event, handler);
+  }
+  return Promise.resolve(() => {});
+};
+
 class StateManager {
   constructor() {
     this.workspaces = [];
@@ -34,14 +49,12 @@ class StateManager {
     this.tabs = [];
     this.activeTabId = null;
     this.activeTabByWorkspace = {};
-    this.connectionStatus = "connecting";
+    this.connectionStatus = "connected";
     this.isSidebarOpen = true;
     this.isManualAdding = false;
     this.editingWorkspaceId = null;
 
-    this.ws = null;
-    this.reconnectTimer = null;
-    this.intentionalClose = false;
+    this.unlistenPty = null;
 
     // session id -> { term, fitAddon, container, resizeObserver }
     this.terminalSessions = new Map();
@@ -58,7 +71,6 @@ class StateManager {
     this.folderCache = new Map();
     this.gitSectionsCollapsed = new Set();
     this.gitTreeCollapsed = new Set(); // Stores collapsed tree folder keys
-
   }
 
   // Language helper for PrismJS syntax highlighting
@@ -108,68 +120,26 @@ class StateManager {
     return this.escapeHtml(code);
   }
 
-  // WebSocket Management
-  initWebSocket() {
-    const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const url = `${proto}//${window.location.host}/ws`;
-
-    this.setConnectionStatus("connecting");
+  // Native Tauri PTY Communication
+  async initPty() {
+    this.setConnectionStatus("connected");
     try {
-      this.ws = new WebSocket(url);
-
-      this.ws.onopen = () => {
-        this.setConnectionStatus("connected");
-        // Re-spawn or reconnect all running tabs
-        this.tabs.forEach((tab) => {
-          if (tab.repoPath) {
-            this.spawnBackendShell(tab.id, tab.repoPath);
-          }
-        });
-      };
-
-      this.ws.onmessage = (event) => {
-        try {
-          const msg = JSON.parse(event.data);
-          this.handleBackendMessage(msg);
-        } catch (e) {
-          console.error("WS parse error", e);
-        }
-      };
-
-      this.ws.onclose = () => {
-        this.setConnectionStatus("offline");
-        this.tabs.forEach((t) => {
-          t.running = false;
-          t.pid = null;
-        });
-        this.renderTabs();
-        this.renderStatusBadge();
-        this.scheduleWsReconnect();
-      };
-
-      this.ws.onerror = () => {
-        this.setConnectionStatus("offline");
-      };
-    } catch {
-      this.setConnectionStatus("offline");
-      this.scheduleWsReconnect();
+      this.unlistenPty = await tauriListen("pty-message", (event) => {
+        this.handleBackendMessage(event.payload);
+      });
+    } catch (err) {
+      console.error("Failed to setup pty-message listener", err);
     }
   }
 
-  scheduleWsReconnect() {
-    if (this.intentionalClose) return;
-    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
-    this.reconnectTimer = setTimeout(() => {
-      this.initWebSocket();
-    }, 2000);
-  }
-
-  sendWs(data) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(data));
+  async sendWs(data) {
+    try {
+      await tauriInvoke("pty_send", { msg: data });
       return true;
+    } catch (err) {
+      console.error("pty_send error", err);
+      return false;
     }
-    return false;
   }
 
   setConnectionStatus(status) {
@@ -187,6 +157,7 @@ class StateManager {
   }
 
   handleBackendMessage(msg) {
+    if (!msg) return;
     const session = this.terminalSessions.get(msg.sessionId);
     const tab = this.tabs.find((t) => t.id === msg.sessionId);
 
@@ -222,9 +193,9 @@ class StateManager {
   // Workspaces API
   async loadWorkspaces() {
     try {
-      const res = await fetch("/api/workspaces");
-      if (res.ok) {
-        this.workspaces = await res.json();
+      const data = await tauriInvoke("get_workspaces");
+      if (Array.isArray(data)) {
+        this.workspaces = data;
         this.renderWorkspaces();
         if (this.workspaces.length > 0 && !this.activeWorkspaceId) {
           this.selectWorkspace(this.workspaces[0]);
@@ -239,8 +210,7 @@ class StateManager {
     try {
       const btn = document.getElementById("add-ws-btn");
       if (btn) btn.disabled = true;
-      const res = await fetch("/api/pick-folder", { method: "POST" });
-      const data = await res.json();
+      const data = await tauriInvoke("pick_folder");
       if (data && !data.canceled && data.id) {
         await this.loadWorkspaces();
         this.selectWorkspace(data);
@@ -255,63 +225,49 @@ class StateManager {
 
   async addWorkspace(name, path) {
     try {
-      const res = await fetch("/api/workspaces", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, path })
-      });
-      if (res.ok) {
-        const created = await res.json();
+      const created = await tauriInvoke("create_workspace", { name, path });
+      if (created && created.id) {
         this.isManualAdding = false;
         await this.loadWorkspaces();
         this.selectWorkspace(created);
       } else {
-        const err = await res.json();
-        alert(err.error || "Failed to add workspace");
+        alert("Failed to add workspace");
       }
-    } catch {
-      alert("Error adding workspace");
+    } catch (err) {
+      alert(String(err) || "Error adding workspace");
     }
   }
 
   async updateWorkspace(id, name, path) {
     try {
-      const res = await fetch(`/api/workspaces/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, path })
-      });
-      if (res.ok) {
-        this.editingWorkspaceId = null;
-        await this.loadWorkspaces();
-      }
-    } catch {
-      alert("Error updating workspace");
+      await tauriInvoke("update_workspace", { id, name, path });
+      this.editingWorkspaceId = null;
+      await this.loadWorkspaces();
+    } catch (err) {
+      alert(String(err) || "Error updating workspace");
     }
   }
 
   async deleteWorkspace(id) {
     if (!confirm("Remove workspace from list?")) return;
     try {
-      const res = await fetch(`/api/workspaces/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        const toClose = this.tabs.filter((t) => t.workspaceId === id);
-        for (const t of toClose) {
-          this.closeTab(t.id);
-        }
-        await this.loadWorkspaces();
-        if (this.activeWorkspaceId === id) {
-          if (this.workspaces.length > 0) {
-            this.selectWorkspace(this.workspaces[0]);
-          } else {
-            this.activeWorkspaceId = null;
-            this.renderTabs();
-            this.renderCwd();
-          }
+      await tauriInvoke("delete_workspace", { id });
+      const toClose = this.tabs.filter((t) => t.workspaceId === id);
+      for (const t of toClose) {
+        this.closeTab(t.id);
+      }
+      await this.loadWorkspaces();
+      if (this.activeWorkspaceId === id) {
+        if (this.workspaces.length > 0) {
+          this.selectWorkspace(this.workspaces[0]);
+        } else {
+          this.activeWorkspaceId = null;
+          this.renderTabs();
+          this.renderCwd();
         }
       }
-    } catch {
-      alert("Error removing workspace");
+    } catch (err) {
+      alert(String(err) || "Error removing workspace");
     }
   }
 
@@ -582,7 +538,7 @@ class StateManager {
     });
 
     // Helper: show/hide/click terminal image popover
-    const showImagePopover = (event, text) => {
+    const showImagePopover = async (event, text) => {
       let popover = document.getElementById("terminal-image-popover");
       if (!popover) {
         popover = document.createElement("div");
@@ -596,14 +552,19 @@ class StateManager {
       const matchedToken = tab.recentTokens?.find(t => t.token === text);
 
       if (matchedToken) {
-        src = matchedToken.previewUrl || `/api/image-preview?path=${encodeURIComponent(matchedToken.path || "")}`;
-      } else if (text.startsWith("/api/upload-image") || text.startsWith("/api/image-preview")) {
-        src = text;
-      } else if (text.startsWith("/")) {
-        src = `/api/image-preview?path=${encodeURIComponent(text)}`;
+        src = matchedToken.previewUrl || "";
+        if (!src && matchedToken.path) {
+          try {
+            src = await tauriInvoke("get_image_preview", { path: matchedToken.path });
+          } catch {}
+        }
       } else {
-        src = `/api/image-preview?path=${encodeURIComponent(text)}`;
+        try {
+          src = await tauriInvoke("get_image_preview", { path: text });
+        } catch {}
       }
+
+      if (!src) return;
 
       popover.innerHTML = `
         <img src="${this.escapeHtml(src)}" alt="${this.escapeHtml(caption)}" />
@@ -634,17 +595,18 @@ class StateManager {
       }
     };
 
-    const activateImagePopover = (event, text) => {
+    const activateImagePopover = async (event, text) => {
       const matchedToken = tab.recentTokens?.find(t => t.token === text);
-      let targetUrl = "";
-      if (matchedToken) {
-        targetUrl = matchedToken.previewUrl || `/api/image-preview?path=${encodeURIComponent(matchedToken.path || "")}`;
-      } else if (text.startsWith("/api/")) {
-        targetUrl = text;
-      } else {
-        targetUrl = `/api/image-preview?path=${encodeURIComponent(text)}`;
+      let targetUrl = matchedToken?.previewUrl || "";
+      if (!targetUrl) {
+        const p = matchedToken?.path || text;
+        try {
+          targetUrl = await tauriInvoke("get_image_preview", { path: p });
+        } catch {}
       }
-      window.open(targetUrl, "_blank");
+      if (targetUrl) {
+        window.open(targetUrl, "_blank");
+      }
     };
 
     // Hover Thumbnail Preview (Link Provider)
@@ -724,18 +686,21 @@ class StateManager {
       e.stopImmediatePropagation();
 
       try {
-        const formData = new FormData();
-        formData.append("file", file);
-
-        const res = await fetch(`/api/upload-image?sessionId=${encodeURIComponent(tab.id)}`, {
-          method: "POST",
-          body: formData
+        const base64Data = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
         });
 
-        if (!res.ok) throw new Error(`Upload failed: ${res.statusText}`);
-        const data = await res.json();
+        const data = await tauriInvoke("upload_image", {
+          sessionId: tab.id,
+          fileName: file.name || "paste.png",
+          base64Data
+        });
+
         const token = data.token || "[image.png]";
-        const previewUrl = data.previewUrl || `/api/image-preview?path=${encodeURIComponent(data.path || "")}`;
+        const previewUrl = data.previewUrl || "";
 
         tab.recentTokens = tab.recentTokens || [];
         tab.recentTokens.push({
@@ -1114,13 +1079,7 @@ class StateManager {
     // Untracked new file: render full file content as additions
     if (tab.gitStatusCode === "U") {
       try {
-        const res = await fetch(`/api/file-content?path=${encodeURIComponent(tab.filePath)}`);
-        const data = await res.json();
-        if (!res.ok || data.error) {
-          diffBody.innerHTML = `<div class="wb-diff-clean">${this.escapeHtml(data.error || "Failed to load untracked file")}</div>`;
-          return;
-        }
-
+        const data = await tauriInvoke("get_file_content", { path: tab.filePath });
         const lines = (data.content || "").split("\n");
         let html = `<table class="wb-diff-table"><tbody>`;
         html += `<tr class="wb-diff-row hunk-header"><td class="wb-diff-gutter">...</td><td class="wb-diff-gutter">...</td><td class="wb-diff-sign"></td><td class="wb-diff-text">@@ +1,${lines.length} Untracked File @@</td></tr>`;
@@ -1139,13 +1098,10 @@ class StateManager {
     // Commit diff fetch
     if (tab.commitHash) {
       try {
-        const url = `/api/git/diff?path=${encodeURIComponent(repoPath)}&commit=${encodeURIComponent(tab.commitHash)}`;
-        const res = await fetch(url);
-        const data = await res.json();
-        if (!res.ok || data.error) {
-          diffBody.innerHTML = `<div class="wb-diff-clean">${this.escapeHtml(data.error || "Failed to load commit diff")}</div>`;
-          return;
-        }
+        const data = await tauriInvoke("get_git_diff", {
+          path: repoPath,
+          commit: tab.commitHash
+        });
         if (!data.diff || !data.diff.trim()) {
           diffBody.innerHTML = `<div class="wb-diff-clean">&#10003; Empty commit or merge commit</div>`;
           return;
@@ -1160,14 +1116,11 @@ class StateManager {
 
     // Git diff fetch
     try {
-      const url = `/api/git/diff?path=${encodeURIComponent(repoPath)}&file=${encodeURIComponent(file || "")}&staged=${Boolean(tab.isStaged)}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        diffBody.innerHTML = `<div class="wb-diff-clean">${this.escapeHtml(data.error || "Failed to load diff")}</div>`;
-        return;
-      }
-
+      const data = await tauriInvoke("get_git_diff", {
+        path: repoPath,
+        file: file || null,
+        staged: Boolean(tab.isStaged)
+      });
       if (!data.diff || !data.diff.trim()) {
         diffBody.innerHTML = `<div class="wb-diff-clean">&#10003; No differences found between versions</div>`;
         return;
@@ -1220,9 +1173,8 @@ class StateManager {
   async loadFileForTab(tab) {
     if (!tab.filePath) return;
     try {
-      const res = await fetch(`/api/file-content?path=${encodeURIComponent(tab.filePath)}`);
-      const data = await res.json();
-      if (res.ok && data.content !== undefined) {
+      const data = await tauriInvoke("get_file_content", { path: tab.filePath });
+      if (data && data.content !== undefined) {
         tab.content = data.content;
         tab.savedContent = data.content;
         tab.isDirty = false;
@@ -1257,19 +1209,10 @@ class StateManager {
     }
 
     try {
-      const res = await fetch("/api/file-content", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          path: tab.filePath,
-          content: tab.content
-        })
+      const data = await tauriInvoke("save_file_content", {
+        path: tab.filePath,
+        content: tab.content
       });
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        alert(data.error || "Save file failed");
-        return;
-      }
       tab.savedContent = tab.content;
       tab.isDirty = false;
 
@@ -1280,8 +1223,10 @@ class StateManager {
           statusEl.textContent = "Saved ✓";
           statusEl.className = "wb-save-status saved";
           setTimeout(() => {
-            if (!tab.isDirty) statusEl.textContent = "";
-          }, 1800);
+            if (!tab.isDirty && statusEl) {
+              statusEl.textContent = "";
+            }
+          }, 2000);
         }
       }
       this.renderTabs();
@@ -1293,7 +1238,7 @@ class StateManager {
         }
       });
     } catch (err) {
-      alert("Error saving: " + String(err));
+      alert("Save error: " + String(err));
     }
   }
 
@@ -1760,16 +1705,13 @@ class StateManager {
       return;
     }
     try {
-      const res = await fetch(`/api/file-content?path=${encodeURIComponent(ws.path + "/.gitignore")}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.content) {
-          this.gitignoreRules = data.content
-            .split("\n")
-            .map((line) => line.trim())
-            .filter((line) => line && !line.startsWith("#"));
-          return;
-        }
+      const data = await tauriInvoke("get_file_content", { path: ws.path + "/.gitignore" });
+      if (data && data.content) {
+        this.gitignoreRules = data.content
+          .split("\n")
+          .map((line) => line.trim())
+          .filter((line) => line && !line.startsWith("#"));
+        return;
       }
     } catch {}
     this.gitignoreRules = [];
@@ -1822,9 +1764,8 @@ class StateManager {
     }
     await this.loadGitignore();
     try {
-      const res = await fetch(`/api/git/status?path=${encodeURIComponent(ws.path)}`);
-      const data = await res.json();
-      if (res.ok && !data.error) {
+      const data = await tauriInvoke("get_git_status", { path: ws.path });
+      if (data) {
         this.gitStatusData = data;
         const totalChanges = (data.staged?.length || 0) + (data.unstaged?.length || 0) + (data.untracked?.length || 0);
         const badgeEl = document.getElementById("rs-git-badge");
@@ -1937,11 +1878,11 @@ class StateManager {
       return this.folderCache.get(dirPath);
     }
     try {
-      const res = await fetch(`/api/files?path=${encodeURIComponent(dirPath)}`);
-      const data = await res.json();
-      if (res.ok && data.items) {
-        this.folderCache.set(dirPath, data.items);
-        return data.items;
+      const data = await tauriInvoke("get_files", { path: dirPath });
+      const items = Array.isArray(data) ? data : (data?.items || []);
+      if (items.length > 0 || Array.isArray(data)) {
+        this.folderCache.set(dirPath, items);
+        return items;
       }
     } catch (e) {
       console.error("fetchDirectoryItems failed", e);
@@ -2151,13 +2092,7 @@ class StateManager {
     modal.style.display = "flex";
 
     try {
-      const res = await fetch(`/api/file-content?path=${encodeURIComponent(filePath)}`);
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        codeEl.textContent = data.error || "Failed to load file content";
-        sizeEl.textContent = "";
-        return;
-      }
+      const data = await tauriInvoke("get_file_content", { path: filePath });
       sizeEl.textContent = this.formatFileSize(data.size || 0);
       codeEl.textContent = data.content || "(Empty file)";
     } catch (err) {
@@ -2183,15 +2118,7 @@ class StateManager {
     groupsEl.innerHTML = `<div class="rs-empty">Checking git status...</div>`;
 
     try {
-      const res = await fetch(`/api/git/status?path=${encodeURIComponent(ws.path)}`);
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        if (branchEl) branchEl.textContent = "not a git repo";
-        if (badgeEl) badgeEl.style.display = "none";
-        groupsEl.innerHTML = `<div class="rs-empty">${this.escapeHtml(data.error || "Not a git repository")}</div>`;
-        return;
-      }
-
+      const data = await tauriInvoke("get_git_status", { path: ws.path });
       this.gitStatusData = data;
       if (branchEl) {
         branchEl.textContent = data.branch || "HEAD";
@@ -2238,7 +2165,9 @@ class StateManager {
 
       this.loadGitCommits();
     } catch (err) {
-      groupsEl.innerHTML = `<div class="rs-empty">Error: ${this.escapeHtml(String(err))}</div>`;
+      if (branchEl) branchEl.textContent = "not a git repo";
+      if (badgeEl) badgeEl.style.display = "none";
+      groupsEl.innerHTML = `<div class="rs-empty">${this.escapeHtml(String(err) || "Not a git repository")}</div>`;
       this.loadGitCommits();
     }
   }
@@ -2549,16 +2478,11 @@ class StateManager {
     const ws = this.getActiveWorkspace();
     if (!ws || !file) return;
     try {
-      const res = await fetch("/api/git/stage", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: ws.path, file })
+      await tauriInvoke("git_stage", {
+        path: ws.path,
+        file,
+        all: false
       });
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        alert(data.error || "Failed to stage file");
-        return;
-      }
       await this.refreshGitAndExplorer();
     } catch (err) {
       alert("Stage error: " + String(err));
@@ -2569,16 +2493,11 @@ class StateManager {
     const ws = this.getActiveWorkspace();
     if (!ws) return;
     try {
-      const res = await fetch("/api/git/stage", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: ws.path, all: true })
+      await tauriInvoke("git_stage", {
+        path: ws.path,
+        file: null,
+        all: true
       });
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        alert(data.error || "Failed to stage all");
-        return;
-      }
       await this.refreshGitAndExplorer();
     } catch (err) {
       alert("Stage all error: " + String(err));
@@ -2589,16 +2508,11 @@ class StateManager {
     const ws = this.getActiveWorkspace();
     if (!ws || !file) return;
     try {
-      const res = await fetch("/api/git/unstage", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: ws.path, file })
+      await tauriInvoke("git_unstage", {
+        path: ws.path,
+        file,
+        all: false
       });
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        alert(data.error || "Failed to unstage file");
-        return;
-      }
       await this.refreshGitAndExplorer();
     } catch (err) {
       alert("Unstage error: " + String(err));
@@ -2609,16 +2523,11 @@ class StateManager {
     const ws = this.getActiveWorkspace();
     if (!ws) return;
     try {
-      const res = await fetch("/api/git/unstage", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: ws.path, all: true })
+      await tauriInvoke("git_unstage", {
+        path: ws.path,
+        file: null,
+        all: true
       });
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        alert(data.error || "Failed to unstage all");
-        return;
-      }
       await this.refreshGitAndExplorer();
     } catch (err) {
       alert("Unstage all error: " + String(err));
@@ -2632,16 +2541,11 @@ class StateManager {
     if (!ok) return;
 
     try {
-      const res = await fetch("/api/git/discard", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: ws.path, file })
+      await tauriInvoke("git_discard", {
+        path: ws.path,
+        file,
+        all: false
       });
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        alert(data.error || "Failed to discard changes");
-        return;
-      }
       await this.refreshGitAndExplorer();
     } catch (err) {
       alert("Discard error: " + String(err));
@@ -2655,16 +2559,11 @@ class StateManager {
     if (!ok) return;
 
     try {
-      const res = await fetch("/api/git/discard", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: ws.path, all: true })
+      await tauriInvoke("git_discard", {
+        path: ws.path,
+        file: null,
+        all: true
       });
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        alert(data.error || "Failed to discard all changes");
-        return;
-      }
       await this.refreshGitAndExplorer();
     } catch (err) {
       alert("Discard all error: " + String(err));
@@ -2684,8 +2583,7 @@ class StateManager {
     }
 
     try {
-      const res = await fetch(`/api/git/log?path=${encodeURIComponent(ws.path)}`);
-      const data = await res.json();
+      const data = await tauriInvoke("get_git_log", { path: ws.path });
       const commits = data.commits || [];
 
       if (countEl) countEl.textContent = String(commits.length);
@@ -2754,13 +2652,11 @@ class StateManager {
     modal.style.display = "flex";
 
     try {
-      const url = `/api/git/diff?path=${encodeURIComponent(repoPath)}&file=${encodeURIComponent(file)}&staged=${staged}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        codeEl.textContent = data.error || "Failed to get diff";
-        return;
-      }
+      const data = await tauriInvoke("get_git_diff", {
+        path: repoPath,
+        file: file || null,
+        staged: Boolean(staged)
+      });
 
       if (!data.diff || !data.diff.trim()) {
         codeEl.textContent = "(No diff or untracked new file)";
@@ -2803,22 +2699,13 @@ class StateManager {
     if (btn) btn.disabled = true;
 
     try {
-      const res = await fetch("/api/git/commit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          path: ws.path,
-          message: msg,
-          stageAll
-        })
+      await tauriInvoke("git_commit", {
+        path: ws.path,
+        message: msg,
+        stageAll
       });
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        alert(data.error || "Git commit failed");
-      } else {
-        if (input) input.value = "";
-        this.loadGitStatus();
-      }
+      if (input) input.value = "";
+      this.loadGitStatus();
     } catch (err) {
       alert("Commit error: " + String(err));
     } finally {
@@ -2857,14 +2744,12 @@ class StateManager {
   async loadSystemStatus() {
     const portEl = document.getElementById("sb-active-port");
     const ramEl = document.getElementById("sb-system-ram");
-    const fallbackPort = window.location.port || "3456";
 
     try {
-      const res = await fetch("/api/system-status");
-      if (res.ok) {
-        const data = await res.json();
+      const data = await tauriInvoke("get_system_status");
+      if (data) {
         if (portEl) {
-          portEl.textContent = `⚡ Port: ${data.port || fallbackPort}`;
+          portEl.textContent = `⚡ Tauri IPC`;
         }
         if (ramEl) {
           ramEl.textContent = `🧠 RAM: ${data.processRssMb} MB | System: ${data.systemUsedGb} / ${data.systemTotalGb} GB (${data.systemPercent}%)`;
@@ -2873,7 +2758,7 @@ class StateManager {
       }
     } catch {}
 
-    if (portEl) portEl.textContent = `⚡ Port: ${fallbackPort}`;
+    if (portEl) portEl.textContent = `⚡ Tauri IPC`;
   }
 
   startSystemStatusLoop() {
@@ -3093,8 +2978,8 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }, { capture: true });
 
-  // Start WS and fetch workspaces
-  app.initWebSocket();
+  // Start PTY listener and fetch workspaces
+  app.initPty();
   app.loadWorkspaces();
   app.startSystemStatusLoop();
 });

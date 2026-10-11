@@ -95,6 +95,19 @@ export function mountTerminalInstance(state, tab) {
         return false;
       }
 
+      // Cmd+Backspace: send Ctrl+U (\x15) to kill line to beginning
+      // ponytail: fixed \x15 sequence; add custom keybinding config when user settings supported.
+      if (e.key === "Backspace" && e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        tab.lastAction = null;
+        sendWs({
+          action: "input",
+          sessionId: tab.id,
+          data: "\x15"
+        });
+        return false;
+      }
+
       if (e.key === "Backspace" && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey) {
         if (tab.lastAction === "paste_token" && tab.recentTokens && tab.recentTokens.length > 0) {
           const lastToken = tab.recentTokens.pop();

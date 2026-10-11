@@ -189,7 +189,7 @@ export function mountTerminalInstance(state, tab) {
   if (typeof term.registerLinkProvider === "function") {
     const IMAGE_REGEX_LIST = [
       /\[image\d+\.(?:png|jpe?g|webp|gif|svg)\]/gi,
-      /\/api\/upload-image|\S+\.(?:png|jpe?g|webp|gif)/gi
+      /\/api\/upload-image|\S+\.(?:png|jpe?g|webp|gif|svg)/gi
     ];
 
     term.registerLinkProvider({

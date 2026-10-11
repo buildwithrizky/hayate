@@ -1,7 +1,7 @@
 use base64::Engine;
 use rfd::AsyncFileDialog;
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use tokio::fs;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -215,75 +215,31 @@ pub async fn write_file_content(path_str: &str, content: &str) -> Result<u64, St
 }
 
 pub async fn save_image_bytes(
-    repo_path: Option<&str>,
     bytes: &[u8],
     ext: &str,
 ) -> Result<UploadImageResult, String> {
-    let mut index = 1u32;
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis();
+    let uuid_suffix = &uuid::Uuid::new_v4().simple().to_string()[..8];
+    let filename = format!("hayate-paste-{now}-{uuid_suffix}.{ext}");
 
-    if let Some(repo) = repo_path {
-        let hayate_images_dir = Path::new(repo).join(".hayate").join("images");
-        fs::create_dir_all(&hayate_images_dir)
-            .await
-            .map_err(|e| e.to_string())?;
+    let temp_dir = std::env::temp_dir();
+    let target_path = temp_dir.join(&filename);
+    fs::write(&target_path, bytes)
+        .await
+        .map_err(|e| format!("Failed to write image file: {e}"))?;
 
-        if let Ok(mut rd) = fs::read_dir(&hayate_images_dir).await {
-            while let Ok(Some(ent)) = rd.next_entry().await {
-                let name = ent.file_name().to_string_lossy().to_string();
-                if name.starts_with("image")
-                    && let Some(num_part) =
-                        name.strip_prefix("image").and_then(|s| s.split('.').next())
-                    && let Ok(num) = num_part.parse::<u32>()
-                    && num >= index
-                {
-                    index = num + 1;
-                }
-            }
-        }
-
-        let filename = format!("image{index}.{ext}");
-        let target_path = hayate_images_dir.join(&filename);
-        fs::write(&target_path, bytes)
-            .await
-            .map_err(|e| e.to_string())?;
-
-        // symlink in repo root: imageN.ext -> .hayate/images/imageN.ext
-        let symlink_path = Path::new(repo).join(&filename);
-        let _ = fs::remove_file(&symlink_path).await;
-        #[cfg(unix)]
-        let _ = tokio::fs::symlink(
-            Path::new(".hayate").join("images").join(&filename),
-            &symlink_path,
-        )
-        .await;
-
-        let target_str = target_path.to_string_lossy().to_string();
-        Ok(UploadImageResult {
-            ok: true,
-            path: target_str.clone(),
-            relative_path: filename.clone(),
-            token: format!("[{filename}]"),
-            label: format!("Image {index}"),
-            preview_url: String::new(),
-        })
-    } else {
-        let tmp = std::env::temp_dir();
-        let filename = format!("image{index}.{ext}");
-        let target_path = tmp.join(&filename);
-        fs::write(&target_path, bytes)
-            .await
-            .map_err(|e| e.to_string())?;
-
-        let target_str = target_path.to_string_lossy().to_string();
-        Ok(UploadImageResult {
-            ok: true,
-            path: target_str.clone(),
-            relative_path: filename.clone(),
-            token: format!("[{filename}]"),
-            label: format!("Image {index}"),
-            preview_url: String::new(),
-        })
-    }
+    let target_str = target_path.to_string_lossy().to_string();
+    Ok(UploadImageResult {
+        ok: true,
+        path: target_str.clone(),
+        relative_path: filename.clone(),
+        token: target_str.clone(),
+        label: filename,
+        preview_url: String::new(),
+    })
 }
 
 pub fn decode_image_data(data_uri: &str) -> Option<(Vec<u8>, String)> {
@@ -341,6 +297,20 @@ mod tests {
         let deserialized: Workspace = serde_json::from_str(&json).expect("deserialize workspace");
         assert_eq!(deserialized.id, "ws-1");
         assert_eq!(deserialized.created_at, 12345678);
+    }
+
+    #[tokio::test]
+    async fn test_save_image_bytes() {
+        let res = save_image_bytes(b"test image data", "png").await;
+        assert!(res.is_ok());
+        let res = res.unwrap();
+        assert!(res.ok);
+        assert!(res.path.contains("hayate-paste-"));
+        assert_eq!(res.token, res.path);
+        assert!(res.relative_path.starts_with("hayate-paste-"));
+        assert!(res.relative_path.ends_with(".png"));
+        assert_eq!(res.label, res.relative_path);
+        let _ = fs::remove_file(PathBuf::from(&res.path)).await;
     }
 
     #[test]

@@ -1,9 +1,7 @@
 use base64::Engine;
 use serde_json::{Value, json};
 use std::path::Path;
-use std::sync::Arc;
 
-use crate::pty_mgr::PtyManager;
 use crate::workspace;
 
 #[tauri::command]
@@ -56,8 +54,8 @@ pub async fn upload_image(
     session_id: Option<String>,
     file_name: Option<String>,
     base64_data: String,
-    state: tauri::State<'_, Arc<PtyManager>>,
 ) -> Result<Value, String> {
+    let _ = session_id;
     let (bytes, ext) = if let Some((b, e)) = workspace::decode_image_data(&base64_data) {
         (b, e)
     } else {
@@ -74,10 +72,7 @@ pub async fn upload_image(
         (decoded, ext)
     };
 
-    let repo_path = session_id
-        .as_deref()
-        .and_then(|sid| state.get_repo_path(sid));
-    let res = workspace::save_image_bytes(repo_path.as_deref(), &bytes, &ext).await?;
+    let res = workspace::save_image_bytes(&bytes, &ext).await?;
     Ok(json!(res))
 }
 

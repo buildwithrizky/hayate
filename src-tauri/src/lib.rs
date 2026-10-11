@@ -1,9 +1,10 @@
 use std::sync::Arc;
-use tauri::Emitter;
+use tauri::{Emitter, Manager};
 #[cfg(not(debug_assertions))]
 use tauri_plugin_updater::UpdaterExt;
 
 pub mod commands;
+pub mod fs_watcher;
 pub mod git_ops;
 pub mod pty_mgr;
 pub mod workspace;
@@ -77,6 +78,10 @@ pub fn run() {
                 }
             });
 
+            let fs_watcher: fs_watcher::SharedFsWatcher =
+                Arc::new(fs_watcher::FsWatcherState::new(app_handle.clone()));
+            app.manage(fs_watcher);
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -99,6 +104,8 @@ pub fn run() {
             commands::get_image_preview,
             commands::get_system_status,
             commands::pty_send,
+            commands::watch_directory,
+            commands::unwatch_directory,
         ])
         .run(tauri::generate_context!())
         .expect("error while building tauri application");

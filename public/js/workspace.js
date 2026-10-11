@@ -54,9 +54,17 @@ export async function addWorkspace(state, name, path) {
 
 export async function updateWorkspace(state, id, name, path) {
   try {
+    const prevWs = state.workspaces.find((w) => w.id === id);
+    const pathChanged = prevWs && prevWs.path !== path;
+
     await tauriInvoke("update_workspace", { id, name, path });
     state.editingWorkspaceId = null;
     await loadWorkspaces(state);
+
+    if (state.activeWorkspaceId === id && pathChanged) {
+      state.fileExplorerPath = path;
+      tauriInvoke("watch_directory", { path }).catch((err) => console.error("watch error", err));
+    }
   } catch (err) {
     alert(String(err) || "Error updating workspace");
   }
@@ -76,6 +84,7 @@ export async function deleteWorkspace(state, id) {
         selectWorkspace(state, state.workspaces[0]);
       } else {
         state.activeWorkspaceId = null;
+        tauriInvoke("unwatch_directory").catch((err) => console.error("unwatch error", err));
         state.switchTab(null);
       }
     }
@@ -88,6 +97,7 @@ export function selectWorkspace(state, ws) {
   if (!ws) return;
   state.activeWorkspaceId = ws.id;
   state.fileExplorerPath = ws.path;
+  tauriInvoke("watch_directory", { path: ws.path }).catch((err) => console.error("watch error", err));
   const rememberedTabId = state.activeTabByWorkspace[ws.id];
   const wsTabs = state.tabs.filter((t) => t.workspaceId === ws.id);
 

@@ -237,8 +237,9 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }, { capture: true });
 
-  // Start PTY listener and fetch workspaces
+  // Start PTY listener, FS watcher, and fetch workspaces
   app.initPty();
+  app.initFsWatcher();
   app.loadWorkspaces();
   app.startSystemStatusLoop();
 });

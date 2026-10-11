@@ -1,4 +1,4 @@
-import { initPty, sendWs, handleBackendMessage, spawnBackendShell } from "./api.js";
+import { initPty, initFsWatcher, sendWs, handleBackendMessage, spawnBackendShell } from "./api.js";
 import {
   loadWorkspaces,
   pickFolder,
@@ -136,6 +136,10 @@ export class StateManager {
   // API
   initPty() {
     return initPty(this);
+  }
+
+  initFsWatcher() {
+    return initFsWatcher(this);
   }
 
   sendWs(data) {

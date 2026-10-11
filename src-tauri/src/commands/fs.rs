@@ -1,7 +1,9 @@
 use base64::Engine;
 use serde_json::{Value, json};
 use std::path::Path;
+use tauri::State;
 
+use crate::fs_watcher::SharedFsWatcher;
 use crate::workspace;
 
 #[tauri::command]
@@ -100,4 +102,17 @@ pub async fn get_image_preview(path: String) -> Result<String, String> {
     let engine = base64::engine::general_purpose::STANDARD;
     let b64 = engine.encode(&bytes);
     Ok(format!("data:{mime};base64,{b64}"))
+}
+
+#[tauri::command]
+pub async fn watch_directory(
+    watcher: State<'_, SharedFsWatcher>,
+    path: String,
+) -> Result<(), String> {
+    watcher.watch(&path).await
+}
+
+#[tauri::command]
+pub async fn unwatch_directory(watcher: State<'_, SharedFsWatcher>) -> Result<(), String> {
+    watcher.unwatch().await
 }

@@ -85,3 +85,36 @@ export function spawnBackendShell(state, sessionId, repoPath) {
     });
   }
 }
+
+// Workspace auto-refresh watcher & focus integration
+export function initFsWatcher(state) {
+  let debounceTimer = null;
+  let lastFocusTime = 0;
+
+  const triggerRefresh = () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(async () => {
+      if (!state.getActiveWorkspace()) return;
+      if (state.activeRightPanel === "explorer") {
+        await state.loadExplorer(true);
+      } else if (state.activeRightPanel === "git") {
+        await state.loadGitStatus();
+      } else {
+        await state.fetchGitStatusData();
+      }
+      state.updateStatusbar();
+    }, 200);
+  };
+
+  tauriListen("workspace-fs-changed", () => {
+    triggerRefresh();
+  }).catch((err) => console.error("Failed to listen workspace-fs-changed", err));
+
+  window.addEventListener("focus", () => {
+    const now = Date.now();
+    if (now - lastFocusTime < 1000) return;
+    lastFocusTime = now;
+    triggerRefresh();
+  });
+}
+

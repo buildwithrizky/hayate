@@ -80,13 +80,24 @@
 }
 
 .rs-git-chevron {
-  display: var(--display-inline-block);
-  font-size: var(--font-size-2xs);
-  line-height: var(--line-height-reset);
-  transition: var(--transition-transform);
+  display: var(--display-inline-flex);
+  align-items: var(--align-center);
+  justify-content: var(--justify-center);
+  width: var(--size-icon-xs);
+  height: var(--size-icon-xs);
+  color: var(--text-muted);
+  flex-shrink: var(--flex-shrink-0);
+  transform: var(--transform-none);
+  transition: var(--transition-transform), var(--transition-color-fast);
 }
 
-.rs-git-section.collapsed .rs-git-chevron {
+.rs-git-section-title:hover .rs-git-chevron,
+.rs-git-tree-row:hover .rs-git-chevron {
+  color: var(--text-main);
+}
+
+.rs-git-section.collapsed .rs-git-chevron,
+.rs-git-folder-item.collapsed .rs-git-chevron {
   transform: var(--transform-rotate-neg90);
 }
 

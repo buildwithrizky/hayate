@@ -210,11 +210,11 @@ export function renderGitTreeNode(state, node, sectionKey, level, isStaged, repo
 
   if (node.isDir) {
     const isCollapsed = state.gitTreeCollapsed.has(itemPathKey);
-    row.className = "rs-git-tree-row rs-git-folder-item";
+    row.className = `rs-git-tree-row rs-git-folder-item ${isCollapsed ? "collapsed" : ""}`;
     row.style.paddingLeft = `${level * 14 + 6}px`;
 
     row.innerHTML = `
-      <span class="rs-git-chevron">${isCollapsed ? "&#9656;" : "&#9662;"}</span>
+      <span class="rs-git-chevron"><svg class="rs-chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
       <span class="rs-git-icon">${isCollapsed ? "&#128193;" : "&#128194;"}</span>
       <span class="rs-git-name" title="${escapeHtml(node.fullPath)}">${escapeHtml(node.name)}</span>
       <span class="rs-git-badge ${escapeHtml(code)}">${escapeHtml(code)}</span>
@@ -239,16 +239,15 @@ export function renderGitTreeNode(state, node, sectionKey, level, isStaged, repo
 
     row.addEventListener("click", () => {
       const collapsed = state.gitTreeCollapsed.has(itemPathKey);
-      const chev = row.querySelector(".rs-git-chevron");
       const ic = row.querySelector(".rs-git-icon");
       if (collapsed) {
         state.gitTreeCollapsed.delete(itemPathKey);
-        if (chev) chev.innerHTML = "&#9662;";
+        row.classList.remove("collapsed");
         if (ic) ic.innerHTML = "&#128194;";
         childrenEl.style.display = "block";
       } else {
         state.gitTreeCollapsed.add(itemPathKey);
-        if (chev) chev.innerHTML = "&#9656;";
+        row.classList.add("collapsed");
         if (ic) ic.innerHTML = "&#128193;";
         childrenEl.style.display = "none";
       }
@@ -268,7 +267,7 @@ export function renderGitTreeNode(state, node, sectionKey, level, isStaged, repo
     }
 
     row.innerHTML = `
-      <span class="rs-git-chevron" style="opacity: 0; pointer-events: none;">&bull;</span>
+      <span class="rs-git-chevron rs-chevron-spacer"></span>
       <span class="rs-git-icon">&#128196;</span>
       <span class="rs-git-name" title="${escapeHtml(node.fullPath)}">${escapeHtml(node.name)}</span>
       <span class="rs-git-actions">${actionsHtml}</span>
@@ -341,7 +340,7 @@ export function renderGitSection(state, title, files, isStaged, repoPath) {
   titleEl.className = "rs-git-section-title";
   titleEl.innerHTML = `
     <span class="rs-git-section-label">
-      <span class="rs-git-chevron">&#9662;</span>
+      <span class="rs-git-chevron"><svg class="rs-chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
       <span>${escapeHtml(title)}</span>
     </span>
     <div style="display: flex; align-items: center; gap: 6px;">

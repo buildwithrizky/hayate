@@ -338,6 +338,7 @@
   --whitespace-pre-wrap: pre-wrap;
 
   /* Transforms & Visual Filters */
+  --transform-none: none;
   --transform-rotate-neg90: rotate(-90deg);
   --filter-brightness-hover: brightness(1.1);
 

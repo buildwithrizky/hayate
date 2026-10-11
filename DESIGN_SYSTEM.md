@@ -348,6 +348,7 @@ Dokumentasi token aktif dan aturan styling Sokudo (`https://sokudo.dev`) di `pub
 ### Transforms, Filters & Utilities
 | Token | Nilai | Penggunaan |
 |---|---|---|
+| `--transform-none` | `none` | Reset transform / rotasi normal |
 | `--transform-rotate-neg90` | `rotate(-90deg)` | Rotasi ikon chevron tertutup |
 | `--filter-brightness-hover` | `brightness(1.1)` | Hover filter brightness |
 | `--box-sizing-border` | `border-box` | Box sizing border box |

@@ -225,8 +225,8 @@ export async function buildTreeNode(state, item, level) {
   }
 
   const chevronHtml = item.isDirectory
-    ? `<span class="rs-chevron">${isOpen ? "&#9662;" : "&#9656;"}</span>`
-    : `<span class="rs-chevron" style="opacity:0;">&bull;</span>`;
+    ? `<span class="rs-chevron"><svg class="rs-chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>`
+    : `<span class="rs-chevron rs-chevron-spacer"></span>`;
 
   const icon = item.isDirectory
     ? (isOpen ? "&#128194;" : "&#128193;")
@@ -264,13 +264,11 @@ export async function buildTreeNode(state, item, level) {
   row.addEventListener("click", async () => {
     if (item.isDirectory) {
       const willOpen = !state.openFolders.has(item.path);
-      const chevronEl = row.querySelector(".rs-chevron");
       const iconEl = row.querySelector(".rs-file-icon");
 
       if (willOpen) {
         state.openFolders.add(item.path);
         row.classList.add("open");
-        if (chevronEl) chevronEl.innerHTML = "&#9662;";
         if (iconEl) iconEl.innerHTML = "&#128194;";
         childrenContainer.innerHTML = `<div class="rs-empty" style="padding:4px ${level * 14 + 20}px; text-align:left;">Loading...</div>`;
         childrenContainer.style.display = "flex";
@@ -288,7 +286,6 @@ export async function buildTreeNode(state, item, level) {
       } else {
         state.openFolders.delete(item.path);
         row.classList.remove("open");
-        if (chevronEl) chevronEl.innerHTML = "&#9656;";
         if (iconEl) iconEl.innerHTML = "&#128193;";
         childrenContainer.style.display = "none";
       }

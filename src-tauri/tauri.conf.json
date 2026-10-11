@@ -20,6 +20,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
+        "label": "main",
         "title": "Hayate",
         "width": 1440,
         "height": 900,

@@ -39,6 +39,7 @@ pub fn run() {
     tauri::Builder::default()
         .manage(Arc::clone(&pty_manager))
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_window_state::Builder::default().build())
         .setup(move |app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(

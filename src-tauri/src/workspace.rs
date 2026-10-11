@@ -214,10 +214,7 @@ pub async fn write_file_content(path_str: &str, content: &str) -> Result<u64, St
     Ok(content.len() as u64)
 }
 
-pub async fn save_image_bytes(
-    bytes: &[u8],
-    ext: &str,
-) -> Result<UploadImageResult, String> {
+pub async fn save_image_bytes(bytes: &[u8], ext: &str) -> Result<UploadImageResult, String> {
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()

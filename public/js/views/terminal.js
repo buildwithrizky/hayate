@@ -77,27 +77,36 @@ export function mountTerminalInstance(state, tab) {
   term.open(container);
 
   term.attachCustomKeyEventHandler((e) => {
-    if (e.type === "keydown" && e.key === "Enter" && e.shiftKey) {
-      e.preventDefault();
-      sendWs({
-        action: "input",
-        sessionId: tab.id,
-        data: "\x1b[13;2u"
-      });
-      return false;
-    }
+    if (e.type === "keydown") {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
+        const key = e.key.toLowerCase();
+        if (key === "t" || key === "w" || key === "r") {
+          return false;
+        }
+      }
 
-    if (e.type === "keydown" && e.key === "Backspace" && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey) {
-      if (tab.lastAction === "paste_token" && tab.recentTokens && tab.recentTokens.length > 0) {
-        const lastToken = tab.recentTokens.pop();
-        tab.lastAction = null;
+      if (e.key === "Enter" && e.shiftKey) {
+        e.preventDefault();
         sendWs({
           action: "input",
           sessionId: tab.id,
-          data: "\x7f".repeat(lastToken.token.length + 1)
+          data: "\x1b[13;2u"
         });
-        e.preventDefault();
         return false;
+      }
+
+      if (e.key === "Backspace" && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey) {
+        if (tab.lastAction === "paste_token" && tab.recentTokens && tab.recentTokens.length > 0) {
+          const lastToken = tab.recentTokens.pop();
+          tab.lastAction = null;
+          sendWs({
+            action: "input",
+            sessionId: tab.id,
+            data: "\x7f".repeat(lastToken.token.length + 1)
+          });
+          e.preventDefault();
+          return false;
+        }
       }
     }
     return true;

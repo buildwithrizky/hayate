@@ -20,12 +20,14 @@ export function createTab(state, workspace, type = "terminal", initOptions = {})
     defaultTitle = initOptions.title || "Diff";
   }
 
+  let title = (initOptions.title || defaultTitle).replace(/^[⇄\s]+/, "");
+
   const id = "tab_" + Math.random().toString(36).substring(2, 9);
   const tab = {
     id,
     type: type || "terminal",
     workspaceId: wsId,
-    title: initOptions.title || defaultTitle,
+    title,
     repoPath,
     running: false,
     pid: null,
@@ -232,6 +234,11 @@ export function sendInputToActive(state, text) {
   session?.term?.focus();
 }
 
+export function renameTab(state, tabId) {
+  state.editingTabId = tabId || state.activeTabId;
+  renderTabs(state);
+}
+
 export function renderTabs(state) {
   const container = document.getElementById("tabs-container");
   const emptyNotice = document.getElementById("terminal-empty-notice");
@@ -253,27 +260,79 @@ export function renderTabs(state) {
 
     let typeBadge = "";
     if (tab.type === "terminal") {
-      typeBadge = `<span class="tab-type-tag is-terminal">&gt;_</span>`;
+      typeBadge = `<svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>`;
     } else if (tab.type === "browser") {
-      typeBadge = `<span class="tab-type-tag is-browser">&#x1F310;</span>`;
+      typeBadge = `<svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`;
     } else if (tab.type === "markdown") {
-      typeBadge = `<span class="tab-type-tag is-markdown">M&darr;</span>`;
+      typeBadge = `<svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`;
     } else if (tab.type === "editor") {
-      typeBadge = `<span class="tab-type-tag is-editor">&lt;/&gt;</span>`;
+      typeBadge = `<svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>`;
     } else if (tab.type === "diff") {
-      typeBadge = `<span class="tab-type-tag is-diff">⇄</span>`;
+      typeBadge = `<svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="m21 3-7 7"/><path d="M8 21H3v-5"/><path d="m3 21 7-7"/></svg>`;
     }
 
     const dirtyBadge = tab.isDirty ? `<span class="tab-dirty-dot" title="Unsaved changes">&#x25cf;</span>` : "";
-    const dotEl = tab.type === "terminal" ? `<span class="tab-dot ${tab.running ? "live" : ""}"></span>` : "";
+    const isEditing = tab.id === state.editingTabId;
+
+    const titleEl = isEditing
+      ? `<input class="tab-title-input" value="${escapeHtml(tab.title)}" />`
+      : `<span class="tab-title">${escapeHtml(tab.title)}</span>`;
 
     pill.innerHTML = `
       ${typeBadge}
-      ${dotEl}
-      <span class="tab-title">${escapeHtml(tab.title)}</span>
+      ${titleEl}
       ${dirtyBadge}
       <button class="tab-close" title="Close tab">&times;</button>
     `;
+
+    if (isEditing) {
+      const input = pill.querySelector(".tab-title-input");
+      if (input) {
+        let finished = false;
+        const commit = (val) => {
+          if (finished) return;
+          finished = true;
+          const trimmed = val ? val.trim() : "";
+          tab.title = trimmed || tab.title;
+          state.editingTabId = null;
+          renderTabs(state);
+        };
+        const cancel = () => {
+          if (finished) return;
+          finished = true;
+          state.editingTabId = null;
+          renderTabs(state);
+        };
+
+        input.onclick = (e) => e.stopPropagation();
+        input.ondblclick = (e) => e.stopPropagation();
+        input.onblur = () => commit(input.value);
+        input.onkeydown = (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            e.stopPropagation();
+            commit(input.value);
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            e.stopPropagation();
+            cancel();
+          }
+        };
+
+        requestAnimationFrame(() => {
+          input.focus();
+          input.select();
+        });
+      }
+    } else {
+      const titleSpan = pill.querySelector(".tab-title");
+      if (titleSpan) {
+        titleSpan.ondblclick = (e) => {
+          e.stopPropagation();
+          renameTab(state, tab.id);
+        };
+      }
+    }
 
     pill.onclick = () => switchTab(state, tab.id);
     pill.querySelector(".tab-close").onclick = (e) => {

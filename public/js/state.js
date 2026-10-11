@@ -13,6 +13,7 @@ import {
   createTab,
   switchTab,
   closeTab,
+  renameTab,
   restartActiveTab,
   clearActiveTab,
   sendInputToActive,
@@ -103,6 +104,7 @@ export class StateManager {
     this.isSidebarOpen = true;
     this.isManualAdding = false;
     this.editingWorkspaceId = null;
+    this.editingTabId = null;
 
     this.unlistenPty = null;
 
@@ -192,6 +194,10 @@ export class StateManager {
 
   closeTab(tabId) {
     return closeTab(this, tabId);
+  }
+
+  renameTab(tabId) {
+    return renameTab(this, tabId);
   }
 
   restartActiveTab() {

@@ -54,7 +54,7 @@ export async function loadGitCommits(state) {
 export function openCommitTab(state, commit) {
   const ws = state.getActiveWorkspace();
   const shortHash = commit.shortHash || (commit.hash ? commit.hash.substring(0, 7) : "commit");
-  const tabTitle = `⇄ #${shortHash}`;
+  const tabTitle = `#${shortHash}`;
 
   // Switch if already open
   const existing = state.tabs.find((t) => t.type === "diff" && t.commitHash === commit.hash);

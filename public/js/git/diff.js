@@ -6,8 +6,8 @@ export function openDiffTab(state, file, isStaged, statusCode = "M", commitHash 
   const fullFilePath = repoPath ? `${repoPath}/${file}` : file;
 
   const diffTitle = commitHash
-    ? `⇄ ${basename} (${commitHash.substring(0, 7)})`
-    : `⇄ ${basename} (${isStaged ? "Staged" : "Working Tree"})`;
+    ? `${basename} (${commitHash.substring(0, 7)})`
+    : `${basename} (${isStaged ? "Staged" : "Working Tree"})`;
 
   // Check if already open
   const existing = state.tabs.find((t) =>

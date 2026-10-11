@@ -94,6 +94,12 @@
   font-size: var(--font-size-sm);
   color: var(--text-muted);
 }
+.wb-bar-icon {
+  width: var(--size-icon-xs);
+  height: var(--size-icon-xs);
+  color: var(--text-dim);
+  flex-shrink: var(--flex-shrink-0);
+}
 .wb-bar-path {
   font-family: var(--font-mono);
   color: var(--accent-cyan);

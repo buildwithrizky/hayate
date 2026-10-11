@@ -130,7 +130,7 @@ export function mountDiffInstance(state, tab) {
   container.innerHTML = `
     <div class="wb-diff-bar">
       <div class="wb-bar-meta">
-        <span class="tab-type-tag is-diff">⇄ Diff</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="wb-bar-icon"><path d="M16 3h5v5"/><path d="m21 3-7 7"/><path d="M8 21H3v-5"/><path d="m3 21 7-7"/></svg>
         <span class="wb-diff-badge ${badgeClass}">${badgeLabel}</span>
         <span class="wb-bar-path" title="${escapeHtml(tab.filePath || tab.diffFile || '')}">${escapeHtml(tab.diffFile || tab.filePath || '')}</span>
       </div>

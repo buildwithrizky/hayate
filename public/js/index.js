@@ -16,25 +16,12 @@ window.addEventListener("DOMContentLoaded", () => {
     app.pickFolder();
   });
 
-  // New Tab button (Instant 1-click create Terminal) & Dropdown Menu
+  // New Tab button & Dropdown Menu
   const newTabBtn = document.getElementById("new-tab-btn");
-  const newTabMoreBtn = document.getElementById("new-tab-more-btn");
   const newTabMenu = document.getElementById("new-tab-menu");
 
-  // Single click '+' -> Immediately spawn new Terminal tab
+  // Click '+' -> Toggle dropdown menu
   newTabBtn?.addEventListener("click", (e) => {
-    e.stopPropagation();
-    if (newTabMenu) newTabMenu.classList.remove("open");
-    app.createTab(null, "terminal");
-  });
-
-  // Click down arrow '▾' or right-click '+' -> Open dropdown menu
-  newTabMoreBtn?.addEventListener("click", (e) => {
-    e.stopPropagation();
-    newTabMenu?.classList.toggle("open");
-  });
-  newTabBtn?.addEventListener("contextmenu", (e) => {
-    e.preventDefault();
     e.stopPropagation();
     newTabMenu?.classList.toggle("open");
   });
@@ -59,7 +46,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   window.addEventListener("click", (e) => {
     if (newTabMenu && newTabMenu.classList.contains("open")) {
-      if (!newTabMenu.contains(e.target) && e.target !== newTabMoreBtn && e.target !== newTabBtn) {
+      if (!newTabMenu.contains(e.target) && e.target !== newTabBtn) {
         newTabMenu.classList.remove("open");
       }
     }
@@ -206,6 +193,28 @@ window.addEventListener("DOMContentLoaded", () => {
         e.preventDefault();
         e.stopPropagation();
         app.toggleRightSidebar();
+        return;
+      }
+      if (lowerKey === "t") {
+        e.preventDefault();
+        e.stopPropagation();
+        app.createTab(null, "terminal");
+        return;
+      }
+      if (lowerKey === "w") {
+        e.preventDefault();
+        e.stopPropagation();
+        if (app.activeTabId) {
+          app.closeTab(app.activeTabId);
+        }
+        return;
+      }
+      if (lowerKey === "r") {
+        e.preventDefault();
+        e.stopPropagation();
+        if (app.activeTabId) {
+          app.renameTab(app.activeTabId);
+        }
         return;
       }
     }

@@ -118,3 +118,10 @@ export function initFsWatcher(state) {
   });
 }
 
+export const createFile = (path) => tauriInvoke("create_file", { path });
+export const createDir = (path) => tauriInvoke("create_dir", { path });
+export const renamePath = (oldPath, newPath) => tauriInvoke("rename_path", { oldPath, newPath });
+export const deletePath = (path) => tauriInvoke("delete_path", { path });
+export const revealInFinder = (path) => tauriInvoke("reveal_in_finder", { path });
+
+

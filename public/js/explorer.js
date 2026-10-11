@@ -1,5 +1,6 @@
 import { tauriInvoke } from "./api.js";
 import { escapeHtml, formatFileSize } from "./state.js";
+import { showExplorerContextMenu } from "./explorer-menu.js";
 
 export async function loadGitignore(state) {
   const ws = state.getActiveWorkspace();
@@ -294,13 +295,19 @@ export async function buildTreeNode(state, item, level) {
     }
   });
 
+  row.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    showExplorerContextMenu(state, e, item, false);
+  });
+
   return wrapper;
 }
 
 export function openFileInWorkbench(state, filePath) {
   if (!filePath) return;
   const isMd = /\.md$/i.test(filePath);
-  const fileName = filePath.split("/").pop();
+  const fileName = filePath.split(/[/\\]+/).filter(Boolean).pop() || filePath;
 
   // Check if file is already open in an existing tab
   const existing = state.tabs.find((t) => t.filePath === filePath && t.type !== "diff");
@@ -323,7 +330,7 @@ export async function previewFile(state, filePath) {
   const codeEl = document.getElementById("rs-preview-code");
   if (!modal || !titleEl || !codeEl) return;
 
-  const fileName = filePath.split("/").pop();
+  const fileName = filePath.split(/[/\\]+/).filter(Boolean).pop() || filePath;
   titleEl.textContent = fileName;
   sizeEl.textContent = "...";
   codeEl.textContent = "Loading...";

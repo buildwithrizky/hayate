@@ -313,3 +313,56 @@
 .rs-git-badge.D { background: var(--accent-danger-badge); color: var(--accent-danger); }
 .rs-git-badge.U { background: var(--accent-emerald-badge); color: var(--accent-emerald); }
 .rs-git-badge.\? { background: var(--accent-emerald-badge); color: var(--accent-emerald); }
+
+/* Context Menu */
+.rs-context-menu {
+  position: var(--pos-fixed);
+  z-index: var(--z-dropdown-menu);
+  min-width: var(--width-dropdown-min);
+  background: var(--bg-panel);
+  border: var(--border-default-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-dropdown);
+  padding: var(--space-xs);
+  display: var(--display-flex);
+  flex-direction: var(--flex-col);
+  gap: var(--space-3xs);
+  backdrop-filter: var(--glass-blur);
+  user-select: var(--user-select-none);
+}
+
+.rs-context-menu-item {
+  all: unset;
+  display: var(--display-flex);
+  align-items: var(--align-center);
+  justify-content: var(--justify-between);
+  padding: var(--space-xs) var(--space-md);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-xs-plus);
+  color: var(--text-main);
+  border-radius: var(--radius-xs);
+  cursor: var(--cursor-pointer);
+  box-sizing: var(--box-sizing-border);
+  transition: var(--transition-fast);
+}
+
+.rs-context-menu-item:hover {
+  background: var(--accent-blue-select);
+  color: var(--text-pure);
+}
+
+.rs-context-menu-item.is-danger {
+  color: var(--accent-danger);
+}
+
+.rs-context-menu-item.is-danger:hover {
+  background: var(--accent-danger-badge);
+  color: var(--accent-danger);
+}
+
+.rs-context-menu-separator {
+  height: var(--size-handle-line);
+  background: var(--border-subtle);
+  margin: var(--space-xs) var(--size-0);
+}
+

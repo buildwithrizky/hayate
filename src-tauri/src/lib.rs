@@ -106,6 +106,11 @@ pub fn run() {
             commands::pty_send,
             commands::watch_directory,
             commands::unwatch_directory,
+            commands::create_file,
+            commands::create_dir,
+            commands::rename_path,
+            commands::delete_path,
+            commands::reveal_in_finder,
         ])
         .run(tauri::generate_context!())
         .expect("error while building tauri application");

@@ -1,5 +1,6 @@
 import { StateManager } from "./state.js";
 import { setupSidebarResizers } from "./layout.js";
+import { initContextMenuEvents, showExplorerContextMenu } from "./explorer-menu.js";
 
 // Global App Initialization
 window.addEventListener("DOMContentLoaded", () => {
@@ -119,6 +120,21 @@ window.addEventListener("DOMContentLoaded", () => {
       app.fitTerminal(app.activeTabId);
     }
   });
+
+  // Explorer pane right click
+  const filesTree = document.getElementById("rs-files-tree");
+  const explorerPanel = document.getElementById("rs-panel-explorer");
+  const handleExplorerContextMenu = (e) => {
+    // If click was inside a tree item, row's contextmenu event handler takes care of it
+    if (e.target.closest(".rs-tree-item, .rs-file-item")) {
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    showExplorerContextMenu(app, e, null, true);
+  };
+  filesTree?.addEventListener("contextmenu", handleExplorerContextMenu);
+  explorerPanel?.addEventListener("contextmenu", handleExplorerContextMenu);
 
   // Global Context Menu handler & state hook
   window.customContextMenu = {
@@ -244,6 +260,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }, { capture: true });
 
   // Start PTY listener, FS watcher, and fetch workspaces
+  initContextMenuEvents();
   app.initPty();
   app.initFsWatcher();
   app.loadWorkspaces();

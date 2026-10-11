@@ -116,3 +116,111 @@ pub async fn watch_directory(
 pub async fn unwatch_directory(watcher: State<'_, SharedFsWatcher>) -> Result<(), String> {
     watcher.unwatch().await
 }
+
+#[tauri::command]
+pub async fn create_file(path: String) -> Result<(), String> {
+    let p = Path::new(path.trim());
+    if p.as_os_str().is_empty() {
+        return Err("path required".to_string());
+    }
+    if let Some(parent) = p.parent() {
+        tokio::fs::create_dir_all(parent)
+            .await
+            .map_err(|e| format!("Failed to create parent directory: {e}"))?;
+    }
+    tokio::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(p)
+        .await
+        .map_err(|e| format!("Failed to create file: {e}"))?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn create_dir(path: String) -> Result<(), String> {
+    let p = Path::new(path.trim());
+    if p.as_os_str().is_empty() {
+        return Err("path required".to_string());
+    }
+    tokio::fs::create_dir_all(p)
+        .await
+        .map_err(|e| format!("Failed to create directory: {e}"))?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn rename_path(old_path: String, new_path: String) -> Result<(), String> {
+    let old = Path::new(old_path.trim());
+    let new = Path::new(new_path.trim());
+    if old.as_os_str().is_empty() || new.as_os_str().is_empty() {
+        return Err("old_path and new_path required".to_string());
+    }
+    tokio::fs::rename(old, new)
+        .await
+        .map_err(|e| format!("Failed to rename: {e}"))?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn delete_path(path: String) -> Result<(), String> {
+    let p = Path::new(path.trim());
+    if p.as_os_str().is_empty() {
+        return Err("path required".to_string());
+    }
+    let metadata = tokio::fs::metadata(p)
+        .await
+        .map_err(|e| format!("Path not found: {e}"))?;
+    if metadata.is_dir() {
+        tokio::fs::remove_dir_all(p)
+            .await
+            .map_err(|e| format!("Failed to remove directory: {e}"))?;
+    } else {
+        tokio::fs::remove_file(p)
+            .await
+            .map_err(|e| format!("Failed to remove file: {e}"))?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn reveal_in_finder(path: String) -> Result<(), String> {
+    let p = path.trim();
+    if p.is_empty() {
+        return Err("path required".to_string());
+    }
+    #[cfg(target_os = "macos")]
+    {
+        tokio::process::Command::new("open")
+            .arg("-R")
+            .arg(p)
+            .status()
+            .await
+            .map_err(|e| format!("Failed to reveal in Finder: {e}"))?;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        tokio::process::Command::new("explorer")
+            .arg(format!("/select,{p}"))
+            .status()
+            .await
+            .map_err(|e| format!("Failed to reveal in Explorer: {e}"))?;
+    }
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        let target = if Path::new(p).is_dir() {
+            p.to_string()
+        } else {
+            Path::new(p)
+                .parent()
+                .map(|parent| parent.to_string_lossy().to_string())
+                .unwrap_or_else(|| p.to_string())
+        };
+        tokio::process::Command::new("xdg-open")
+            .arg(target)
+            .status()
+            .await
+            .map_err(|e| format!("Failed to reveal path: {e}"))?;
+    }
+    Ok(())
+}

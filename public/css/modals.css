@@ -107,3 +107,61 @@
   text-overflow: var(--text-overflow-ellipsis);
   white-space: var(--whitespace-nowrap);
 }
+
+/* In-App Interactive Dialogs (Prompt & Confirm) */
+.rs-dialog-window {
+  position: var(--pos-relative);
+  z-index: var(--z-modal-window);
+  width: var(--width-dialog);
+  max-width: var(--vw-modal-max);
+  background: var(--bg-panel);
+  border: var(--border-default-subtle);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-modal);
+  padding: var(--space-xl);
+  display: var(--display-flex);
+  flex-direction: var(--flex-col);
+  gap: var(--gap-md);
+  box-sizing: var(--box-sizing-border);
+}
+
+.rs-dialog-title {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-main);
+  line-height: var(--line-height-heading);
+}
+
+.rs-dialog-message {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  line-height: var(--line-height-prose);
+  word-break: var(--word-break-all);
+}
+
+.rs-dialog-input {
+  width: var(--full-pct);
+  background: var(--bg-app);
+  border: var(--border-default-strong);
+  color: var(--text-main);
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-mono);
+  border-radius: var(--radius-input);
+  outline: var(--outline-none);
+  box-sizing: var(--box-sizing-border);
+}
+
+.rs-dialog-input:focus {
+  border-color: var(--accent-blue);
+  box-shadow: var(--shadow-focus-blue);
+}
+
+.rs-dialog-actions {
+  display: var(--display-flex);
+  align-items: var(--align-center);
+  justify-content: var(--justify-end);
+  gap: var(--gap-sm);
+  margin-top: var(--space-xs);
+}
+

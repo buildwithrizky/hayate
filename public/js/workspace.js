@@ -96,7 +96,8 @@ export function selectWorkspace(state, ws) {
   } else if (wsTabs.length > 0) {
     state.switchTab(wsTabs[0].id);
   } else {
-    state.createTab(ws);
+    state.activeTabId = null;
+    delete state.activeTabByWorkspace[ws.id];
   }
   renderWorkspaces(state);
   state.renderTabs();

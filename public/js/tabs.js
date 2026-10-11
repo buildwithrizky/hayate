@@ -160,16 +160,11 @@ export function closeTab(state, tabId) {
       const nextIdx = Math.min(idxInWs, remainingWsTabs.length - 1);
       switchTab(state, remainingWsTabs[nextIdx].id);
     } else {
-      const targetWs = state.workspaces.find((w) => w.id === wsId);
-      if (targetWs) {
-        createTab(state, targetWs, "terminal");
-      } else {
-        state.activeTabId = null;
-        delete state.activeTabByWorkspace[wsId];
-        renderTabs(state);
-        renderCwd(state);
-        renderStatusBadge(state);
-      }
+      state.activeTabId = null;
+      delete state.activeTabByWorkspace[wsId];
+      renderTabs(state);
+      renderCwd(state);
+      renderStatusBadge(state);
     }
   } else if (state.activeTabByWorkspace[wsId] === tabId) {
     if (remainingWsTabs.length > 0) {
@@ -250,7 +245,7 @@ export function renderTabs(state) {
     : state.tabs;
 
   if (emptyNotice) {
-    emptyNotice.style.display = state.tabs.length === 0 ? "flex" : "none";
+    emptyNotice.style.display = currentTabs.length === 0 ? "var(--display-flex)" : "var(--display-none)";
   }
 
   currentTabs.forEach((tab) => {

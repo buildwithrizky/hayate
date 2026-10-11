@@ -1,0 +1,5 @@
+#!/bin/sh
+set -e
+
+cargo fmt --manifest-path src-tauri/Cargo.toml --check
+cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings

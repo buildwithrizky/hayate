@@ -76,8 +76,7 @@ export async function deleteWorkspace(state, id) {
         selectWorkspace(state, state.workspaces[0]);
       } else {
         state.activeWorkspaceId = null;
-        state.renderTabs();
-        state.renderCwd();
+        state.switchTab(null);
       }
     }
   } catch (err) {
@@ -86,6 +85,7 @@ export async function deleteWorkspace(state, id) {
 }
 
 export function selectWorkspace(state, ws) {
+  if (!ws) return;
   state.activeWorkspaceId = ws.id;
   state.fileExplorerPath = ws.path;
   const rememberedTabId = state.activeTabByWorkspace[ws.id];
@@ -96,13 +96,10 @@ export function selectWorkspace(state, ws) {
   } else if (wsTabs.length > 0) {
     state.switchTab(wsTabs[0].id);
   } else {
-    state.activeTabId = null;
     delete state.activeTabByWorkspace[ws.id];
+    // ponytail: switchTab(null) resets and hides active views; add empty-workspace welcome view if designed.
+    state.switchTab(null);
   }
-  renderWorkspaces(state);
-  state.renderTabs();
-  state.renderCwd();
-  state.reloadRightSidebar();
 }
 
 export function renderWorkspaces(state) {

@@ -78,9 +78,9 @@ export function createTab(state, workspace, type = "terminal", initOptions = {})
   return tab;
 }
 
-export function switchTab(state, tabId) {
-  state.activeTabId = tabId;
-  const tab = state.tabs.find((t) => t.id === tabId);
+export function switchTab(state, tabId = null) {
+  state.activeTabId = tabId || null;
+  const tab = tabId ? state.tabs.find((t) => t.id === tabId) : null;
 
   if (tab && tab.workspaceId) {
     state.activeWorkspaceId = tab.workspaceId;
@@ -89,12 +89,17 @@ export function switchTab(state, tabId) {
 
   // Hide or show terminal sessions
   state.terminalSessions.forEach((session, sId) => {
-    if (sId === tabId) {
+    if (tabId && sId === tabId) {
       session.container.classList.remove("hidden");
-      requestAnimationFrame(() => {
-        state.fitTerminal(sId);
-        session.term.focus();
-      });
+      if (typeof requestAnimationFrame === "function") {
+        requestAnimationFrame(() => {
+          state.fitTerminal(sId);
+          session.term.focus();
+        });
+      } else {
+        state.fitTerminal?.(sId);
+        session.term?.focus?.();
+      }
     } else {
       session.container.classList.add("hidden");
     }
@@ -102,7 +107,7 @@ export function switchTab(state, tabId) {
 
   // Hide or show view containers (browser, markdown, editor, diff)
   state.viewContainers.forEach((container, vId) => {
-    if (vId === tabId) {
+    if (tabId && vId === tabId) {
       container.classList.remove("hidden");
       const textarea = container.querySelector(".wb-textarea");
       if (textarea) textarea.focus();
@@ -160,11 +165,8 @@ export function closeTab(state, tabId) {
       const nextIdx = Math.min(idxInWs, remainingWsTabs.length - 1);
       switchTab(state, remainingWsTabs[nextIdx].id);
     } else {
-      state.activeTabId = null;
       delete state.activeTabByWorkspace[wsId];
-      renderTabs(state);
-      renderCwd(state);
-      renderStatusBadge(state);
+      switchTab(state, null);
     }
   } else if (state.activeTabByWorkspace[wsId] === tabId) {
     if (remainingWsTabs.length > 0) {

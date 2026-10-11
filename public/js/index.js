@@ -172,10 +172,19 @@ window.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // Alt + Left / Right navigation
+    // Alt + Left / Right navigation outside editable elements / terminal
     if (e.altKey && !isMod && (key === "ArrowLeft" || key === "ArrowRight")) {
-      e.preventDefault();
-      e.stopPropagation();
+      const target = e.target;
+      const isEditable = target && (
+        target.isContentEditable ||
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.closest?.(".xterm")
+      );
+      if (!isEditable) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
       return;
     }
 

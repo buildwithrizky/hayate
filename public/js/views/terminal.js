@@ -1,6 +1,30 @@
 import { tauriInvoke, sendWs } from "../api.js";
 import { escapeHtml } from "../state.js";
 
+export const TERMINAL_KEY_SEQUENCES = {
+  HOME: "\x01",      // Ctrl+A (Cmd+ArrowLeft)
+  END: "\x05",       // Ctrl+E (Cmd+ArrowRight)
+  WORD_BACK: "\x1bb", // Esc b (Alt/Option+ArrowLeft)
+  WORD_FWD: "\x1bf"   // Esc f (Alt/Option+ArrowRight)
+};
+
+export function resolveTerminalKeySequence(e) {
+  const isLeft = e.key === "ArrowLeft" || e.code === "ArrowLeft" || e.key === "Left";
+  const isRight = e.key === "ArrowRight" || e.code === "ArrowRight" || e.key === "Right";
+  const hasAlt = (e.altKey || (typeof e.getModifierState === "function" && e.getModifierState("Alt"))) && !e.metaKey && !e.ctrlKey;
+  const hasCmd = e.metaKey && !e.altKey && !e.ctrlKey;
+
+  if (isLeft) {
+    if (hasCmd) return TERMINAL_KEY_SEQUENCES.HOME;
+    if (hasAlt) return TERMINAL_KEY_SEQUENCES.WORD_BACK;
+  }
+  if (isRight) {
+    if (hasCmd) return TERMINAL_KEY_SEQUENCES.END;
+    if (hasAlt) return TERMINAL_KEY_SEQUENCES.WORD_FWD;
+  }
+  return null;
+}
+
 // Terminal Theme Configuration - 100% Sokudo.dev
 export const TERM_THEME = {
   background: "#000000",
@@ -66,7 +90,8 @@ export function mountTerminalInstance(state, tab) {
     fontSize: 13,
     lineHeight: 1.25,
     convertEol: true,
-    allowTransparency: true
+    allowTransparency: true,
+    macOptionIsMeta: true
   });
 
   const FitAddonClass = window.FitAddon?.FitAddon || window.FitAddon;
@@ -104,6 +129,18 @@ export function mountTerminalInstance(state, tab) {
           action: "input",
           sessionId: tab.id,
           data: "\x15"
+        });
+        return false;
+      }
+
+      const seq = resolveTerminalKeySequence(e);
+      if (seq) {
+        e.preventDefault();
+        tab.lastAction = null;
+        sendWs({
+          action: "input",
+          sessionId: tab.id,
+          data: seq
         });
         return false;
       }

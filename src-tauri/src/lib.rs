@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use tauri::Emitter;
+#[cfg(not(debug_assertions))]
 use tauri_plugin_updater::UpdaterExt;
 
 pub mod commands;
@@ -7,6 +8,7 @@ pub mod git_ops;
 pub mod pty_mgr;
 pub mod workspace;
 
+#[cfg(not(debug_assertions))]
 async fn check_and_apply_update(app: tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let updater = app.updater()?;
     if let Some(update) = updater.check().await? {
@@ -52,14 +54,17 @@ pub fn run() {
             let app_handle = app.handle().clone();
 
             // Background auto-updater task
-            let updater_handle = app_handle.clone();
-            tauri::async_runtime::spawn(async move {
-                // ponytail: delay check 5s to avoid fighting startup load, upgrade to interval timer if polling wanted
-                tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-                if let Err(e) = check_and_apply_update(updater_handle).await {
-                    log::error!("Auto-updater error: {e}");
-                }
-            });
+            #[cfg(not(debug_assertions))]
+            {
+                let updater_handle = app_handle.clone();
+                tauri::async_runtime::spawn(async move {
+                    // ponytail: delay check 5s to avoid fighting startup load, upgrade to interval timer if polling wanted
+                    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                    if let Err(e) = check_and_apply_update(updater_handle).await {
+                        log::warn!("Auto-updater error: {e}");
+                    }
+                });
+            }
 
             // Background listener forwarding PTY messages as Tauri event "pty-message"
             let pty_listener_handle = app_handle.clone();

@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.7] - 2026-10-12
+
+### Feat
+- Realtime filesystem watcher & auto-refresh explorer/git.
+- Context menu explorer (new file/folder, rename, delete).
+- Terminal Cmd/Opt arrow navigation.
+- Unified chevron icons & styling.
+
+### Fix
+- Gate updater behind release flag.
+- Hide previous tab content on switching to empty workspace.
+- Format check & workflow permissions.
+
 ## [0.1.6] - 2026-10-11
 
 ### Feat

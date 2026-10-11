@@ -32,7 +32,14 @@ export function matchGitignore(state, relPath, isDir = false) {
     const isDirOnly = r.endsWith("/");
     if (isDirOnly) {
       r = r.slice(0, -1);
-      if (!isDir && !cleanRel.includes("/")) continue;
+      // ponytail: directory-only check; upgrade to full gitignore pathspec when nested gitignore needed
+      if (!isDir) {
+        const insideDir = r.startsWith("/")
+          ? cleanRel.startsWith(r.slice(1) + "/")
+          : cleanRel.startsWith(r + "/") || parts.slice(0, -1).includes(r);
+        if (insideDir) return true;
+        continue;
+      }
     }
 
     // Exact match on relative path or basename
@@ -75,7 +82,7 @@ export function isPathIgnored(state, targetPath, isDir = false) {
   if (state.gitStatusData?.ignored && Array.isArray(state.gitStatusData.ignored)) {
     return state.gitStatusData.ignored.some((ign) => {
       const ignNorm = ign.replace(/\/+$/, "");
-      return norm === ignNorm || ignNorm.startsWith(norm + "/") || norm.startsWith(ignNorm + "/");
+      return norm === ignNorm || norm.startsWith(ignNorm + "/");
     });
   }
 

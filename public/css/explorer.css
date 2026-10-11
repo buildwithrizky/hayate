@@ -135,7 +135,7 @@
   font-family: var(--font-mono);
   background: var(--bg-subtle);
   border: var(--border-default-subtle);
-  color: var(--accent-cyan);
+  color: var(--text-main);
   padding: var(--space-3xs) var(--space-md);
   border-radius: var(--radius-pill);
   max-width: var(--width-subtext-max);
@@ -300,7 +300,7 @@
   font-weight: var(--font-weight-bold);
   width: var(--size-icon-sm);
   height: var(--size-icon-sm);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-full);
   display: var(--display-inline-flex);
   align-items: var(--align-center);
   justify-content: var(--justify-center);

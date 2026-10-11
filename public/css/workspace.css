@@ -32,9 +32,6 @@
   overflow: var(--overflow-hidden);
   text-overflow: var(--text-overflow-ellipsis);
 }
-.ws-item.active .ws-title {
-  color: var(--accent-blue);
-}
 .ws-path {
   font-size: var(--font-size-xs);
   color: var(--text-dim);

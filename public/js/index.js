@@ -60,12 +60,9 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // Right Sidebar Toggle (top-right header button & sidebar close button)
+  // Right Sidebar Toggle (top-right header button)
   document.getElementById("toggle-right-sidebar-btn")?.addEventListener("click", () => {
     app.toggleRightSidebar();
-  });
-  document.getElementById("rs-close-btn")?.addEventListener("click", () => {
-    app.toggleRightSidebar(false);
   });
 
   // Switch between Explorer & Git tabs

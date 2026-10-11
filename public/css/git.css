@@ -43,7 +43,7 @@
 
 .rs-commit-opt input {
   margin: var(--size-0);
-  accent-color: var(--accent-emerald);
+  accent-color: var(--text-muted);
 }
 
 /* Git Groups */

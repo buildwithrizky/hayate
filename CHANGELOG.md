@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.6] - 2026-10-11
+
+### Feat
+- Persist window state across restarts.
+- Unify new tab button, add shortcuts, polish tab icons, and handle empty workspace state.
+- Add Cmd+Backspace shortcut to clear line in terminal.
+
+### Fix
+- Correct gitignore matching for directory rules and parent paths.
+
+### Refactor
+- Save clipboard images to temp with UUID naming.
+
 ## [0.1.5] - 2026-10-10
 
 ### Fix

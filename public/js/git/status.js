@@ -33,7 +33,8 @@ export async function fetchGitStatusData(state) {
   return null;
 }
 
-export async function loadGitStatus(state) {
+export async function loadGitStatus(state, options = {}) {
+  const { fetchCommits = true } = options;
   const ws = state.getActiveWorkspace();
   const branchEl = document.getElementById("rs-git-branch");
   const groupsEl = document.getElementById("rs-git-groups");
@@ -95,12 +96,16 @@ export async function loadGitStatus(state) {
       groupsEl.appendChild(renderGitSection(state, "Untracked", expUntracked, false, ws.path));
     }
 
-    loadGitCommits(state);
+    if (fetchCommits) {
+      loadGitCommits(state);
+    }
   } catch (err) {
     if (branchEl) branchEl.textContent = "not a git repo";
     if (badgeEl) badgeEl.style.display = "none";
     groupsEl.innerHTML = `<div class="rs-empty">${escapeHtml(String(err) || "Not a git repository")}</div>`;
-    loadGitCommits(state);
+    if (fetchCommits) {
+      loadGitCommits(state);
+    }
   }
 }
 
@@ -397,9 +402,8 @@ export function renderGitSection(state, title, files, isStaged, repoPath) {
   return sectionEl;
 }
 
-export async function refreshGitAndExplorer(state) {
-  await state.fetchGitStatusData();
-  await loadGitStatus(state);
+export async function refreshGitAndExplorer(state, options = {}) {
+  await loadGitStatus(state, options);
   if (state.activeRightPanel === "explorer") {
     state.loadExplorer(true);
   }
@@ -414,7 +418,7 @@ export async function stageFile(state, file) {
       file,
       all: false
     });
-    await refreshGitAndExplorer(state);
+    await refreshGitAndExplorer(state, { fetchCommits: false });
   } catch (err) {
     alert("Stage error: " + String(err));
   }
@@ -429,7 +433,7 @@ export async function stageAll(state) {
       file: null,
       all: true
     });
-    await refreshGitAndExplorer(state);
+    await refreshGitAndExplorer(state, { fetchCommits: false });
   } catch (err) {
     alert("Stage all error: " + String(err));
   }
@@ -444,7 +448,7 @@ export async function unstageFile(state, file) {
       file,
       all: false
     });
-    await refreshGitAndExplorer(state);
+    await refreshGitAndExplorer(state, { fetchCommits: false });
   } catch (err) {
     alert("Unstage error: " + String(err));
   }
@@ -459,7 +463,7 @@ export async function unstageAll(state) {
       file: null,
       all: true
     });
-    await refreshGitAndExplorer(state);
+    await refreshGitAndExplorer(state, { fetchCommits: false });
   } catch (err) {
     alert("Unstage all error: " + String(err));
   }
@@ -477,7 +481,7 @@ export async function discardFile(state, file) {
       file,
       all: false
     });
-    await refreshGitAndExplorer(state);
+    await refreshGitAndExplorer(state, { fetchCommits: false });
   } catch (err) {
     alert("Discard error: " + String(err));
   }
@@ -495,7 +499,7 @@ export async function discardAll(state) {
       file: null,
       all: true
     });
-    await refreshGitAndExplorer(state);
+    await refreshGitAndExplorer(state, { fetchCommits: false });
   } catch (err) {
     alert("Discard all error: " + String(err));
   }

@@ -90,6 +90,63 @@ export function isPathIgnored(state, targetPath, isDir = false) {
   return false;
 }
 
+export function buildGitStatusIndex(gitStatusData) {
+  if (!gitStatusData) return null;
+
+  const fileMap = new Map();
+  const dirSetM = new Set();
+  const dirSetU = new Set();
+  const untrackedDirs = [];
+
+  const addDirAncestors = (filePath, isM) => {
+    let slashIdx = filePath.lastIndexOf("/");
+    while (slashIdx !== -1) {
+      const dir = filePath.slice(0, slashIdx);
+      if (isM) dirSetM.add(dir);
+      else dirSetU.add(dir);
+      slashIdx = dir.lastIndexOf("/");
+    }
+    if (isM) dirSetM.add("");
+    else dirSetU.add("");
+  };
+
+  const indexItem = (filePath, rawStatus) => {
+    if (!filePath) return;
+    const isM = rawStatus === "M" || rawStatus === "D";
+    const status = (rawStatus === "D") ? "D" : (rawStatus === "A" ? "A" : (isM ? "M" : "U"));
+    if (!fileMap.has(filePath) || status === "M" || status === "D") {
+      fileMap.set(filePath, status);
+    }
+    addDirAncestors(filePath, isM);
+  };
+
+  if (Array.isArray(gitStatusData.untracked)) {
+    for (const f of gitStatusData.untracked) {
+      fileMap.set(f, "U");
+      addDirAncestors(f, false);
+      if (f.endsWith("/")) {
+        untrackedDirs.push(f.slice(0, -1));
+      } else {
+        untrackedDirs.push(f);
+      }
+    }
+  }
+
+  if (Array.isArray(gitStatusData.staged)) {
+    for (const item of gitStatusData.staged) {
+      indexItem(item.file, item.status);
+    }
+  }
+
+  if (Array.isArray(gitStatusData.unstaged)) {
+    for (const item of gitStatusData.unstaged) {
+      indexItem(item.file, item.status);
+    }
+  }
+
+  return { fileMap, dirSetM, dirSetU, untrackedDirs };
+}
+
 export function getFileGitStatus(state, filePath) {
   if (!state.gitStatusData) return null;
   const ws = state.getActiveWorkspace();
@@ -100,23 +157,18 @@ export function getFileGitStatus(state, filePath) {
     relPath = filePath.slice(ws.path.length).replace(/^\/+/, "");
   }
 
-  if (state.gitStatusData.untracked && (state.gitStatusData.untracked.includes(relPath) || state.gitStatusData.untracked.some((u) => relPath.startsWith(u.replace(/\/+$/, "") + "/")))) {
-    return "U";
+  // Ensure index cached on gitStatusData
+  if (state.gitStatusData._index === undefined) {
+    state.gitStatusData._index = buildGitStatusIndex(state.gitStatusData);
   }
+  const idx = state.gitStatusData._index;
+  if (!idx) return null;
 
-  const stagedItem = state.gitStatusData.staged?.find((i) => i.file === relPath);
-  if (stagedItem) {
-    const st = stagedItem.status;
-    if (st === "A") return "A";
-    if (st === "D") return "D";
-    return "M";
-  }
+  const direct = idx.fileMap.get(relPath);
+  if (direct) return direct;
 
-  const unstagedItem = state.gitStatusData.unstaged?.find((i) => i.file === relPath);
-  if (unstagedItem) {
-    const st = unstagedItem.status;
-    if (st === "D") return "D";
-    return "M";
+  for (const u of idx.untrackedDirs) {
+    if (relPath.startsWith(u + "/")) return "U";
   }
 
   return null;
@@ -131,21 +183,25 @@ export function getFolderGitStatus(state, folderPath) {
   if (folderPath.startsWith(ws.path)) {
     relDir = folderPath.slice(ws.path.length).replace(/^\/+/, "");
   }
-  const prefix = relDir ? (relDir.endsWith("/") ? relDir : relDir + "/") : "";
+  relDir = relDir.replace(/\/+$/, "");
 
-  let hasM = false;
-  let hasU = false;
+  if (state.gitStatusData._index === undefined) {
+    state.gitStatusData._index = buildGitStatusIndex(state.gitStatusData);
+  }
+  const idx = state.gitStatusData._index;
+  if (!idx) return null;
 
-  const check = (file, st) => {
-    if (prefix === "" || file === relDir || file.startsWith(prefix) || (relDir && relDir.startsWith(file.replace(/\/+$/, "") + "/"))) {
-      if (st === "M" || st === "D") hasM = true;
-      else if (st === "U" || st === "?" || st === "A") hasU = true;
+  let hasM = idx.dirSetM.has(relDir);
+  let hasU = idx.dirSetU.has(relDir);
+
+  if (!hasU && relDir) {
+    for (const u of idx.untrackedDirs) {
+      if (relDir.startsWith(u + "/") || relDir === u) {
+        hasU = true;
+        break;
+      }
     }
-  };
-
-  state.gitStatusData.untracked?.forEach((f) => check(f, "U"));
-  state.gitStatusData.staged?.forEach((item) => check(item.file, item.status));
-  state.gitStatusData.unstaged?.forEach((item) => check(item.file, item.status));
+  }
 
   if (hasM) return "M";
   if (hasU) return "U";

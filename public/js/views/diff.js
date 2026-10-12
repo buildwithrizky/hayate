@@ -3,11 +3,15 @@ import { escapeHtml } from "../state.js";
 
 export function renderDiffTableHtml(rawDiff) {
   const rawLines = rawDiff.split("\n");
+  const maxLines = 500;
+  const isTruncated = rawLines.length > maxLines;
+  const linesToRender = isTruncated ? rawLines.slice(0, maxLines) : rawLines;
+
   let html = `<table class="wb-diff-table"><tbody>`;
   let oldLine = 0;
   let newLine = 0;
 
-  for (const line of rawLines) {
+  for (const line of linesToRender) {
     if (line.startsWith("@@")) {
       const match = line.match(/@@\s+-(\d+)(?:,\d+)?\s+\+(\d+)(?:,\d+)?\s+@@/);
       if (match) {
@@ -34,6 +38,10 @@ export function renderDiffTableHtml(rawDiff) {
     }
   }
 
+  if (isTruncated) {
+    html += `<tr class="wb-diff-row hunk-header"><td class="wb-diff-gutter">...</td><td class="wb-diff-gutter">...</td><td class="wb-diff-sign"></td><td class="wb-diff-text">Diff truncated: showing first ${maxLines} of ${rawLines.length} lines</td></tr>`;
+  }
+
   html += `</tbody></table>`;
   return html;
 }
@@ -51,12 +59,19 @@ export async function loadDiffForTab(state, tab) {
   if (tab.gitStatusCode === "U") {
     try {
       const data = await tauriInvoke("get_file_content", { path: tab.filePath });
-      const lines = (data.content || "").split("\n");
+      const rawLines = (data.content || "").split("\n");
+      const maxLines = 500;
+      const isTruncated = rawLines.length > maxLines;
+      const lines = isTruncated ? rawLines.slice(0, maxLines) : rawLines;
+
       let html = `<table class="wb-diff-table"><tbody>`;
-      html += `<tr class="wb-diff-row hunk-header"><td class="wb-diff-gutter">...</td><td class="wb-diff-gutter">...</td><td class="wb-diff-sign"></td><td class="wb-diff-text">@@ +1,${lines.length} Untracked File @@</td></tr>`;
+      html += `<tr class="wb-diff-row hunk-header"><td class="wb-diff-gutter">...</td><td class="wb-diff-gutter">...</td><td class="wb-diff-sign"></td><td class="wb-diff-text">@@ +1,${rawLines.length} Untracked File @@</td></tr>`;
       lines.forEach((line, i) => {
         html += `<tr class="wb-diff-row line-add"><td class="wb-diff-gutter"></td><td class="wb-diff-gutter">${i + 1}</td><td class="wb-diff-sign">+</td><td class="wb-diff-text">${escapeHtml(line)}</td></tr>`;
       });
+      if (isTruncated) {
+        html += `<tr class="wb-diff-row hunk-header"><td class="wb-diff-gutter">...</td><td class="wb-diff-gutter">...</td><td class="wb-diff-sign"></td><td class="wb-diff-text">Diff truncated: showing first ${maxLines} of ${rawLines.length} lines</td></tr>`;
+      }
       html += `</tbody></table>`;
       diffBody.innerHTML = html;
       return;

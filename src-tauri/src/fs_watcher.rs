@@ -13,12 +13,37 @@ fn is_noisy(path: &Path) -> bool {
     for comp in path.components() {
         let name = comp.as_os_str();
         if in_git {
-            if name == "objects" || name == "index.lock" {
+            if name == "objects" || name == "index.lock" || name == "logs" {
                 return true;
             }
         } else if name == ".git" {
             in_git = true;
-        } else if name == "node_modules" || name == "target" || name == ".DS_Store" {
+        } else if matches!(
+            name.to_str(),
+            Some(
+                "node_modules"
+                    | "target"
+                    | ".DS_Store"
+                    | ".turbo"
+                    | ".next"
+                    | ".nuxt"
+                    | ".svelte-kit"
+                    | "dist"
+                    | "build"
+                    | "out"
+                    | ".cache"
+                    | ".parcel-cache"
+                    | "__pycache__"
+                    | ".venv"
+                    | "venv"
+                    | ".pytest_cache"
+                    | ".mypy_cache"
+                    | "coverage"
+                    | ".nyc_output"
+                    | ".idea"
+                    | ".vscode"
+            )
+        ) {
             return true;
         }
     }

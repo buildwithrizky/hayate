@@ -264,6 +264,15 @@ export function mountEditorInstance(state, tab) {
     highlightCodeEl.innerHTML = highlightCode(paddedVal, currentLang);
   };
 
+  let highlightTimer = null;
+  const scheduleHighlight = () => {
+    if (highlightTimer) clearTimeout(highlightTimer);
+    highlightTimer = setTimeout(() => {
+      updateHighlight();
+      highlightTimer = null;
+    }, 50);
+  };
+
   updateLines();
   updateHighlight();
 
@@ -276,14 +285,17 @@ export function mountEditorInstance(state, tab) {
   textarea.addEventListener("scroll", syncScroll);
 
   textarea.addEventListener("input", () => {
+    const wasDirty = tab.isDirty;
     tab.content = textarea.value;
     tab.isDirty = tab.content !== tab.savedContent;
     statusEl.textContent = tab.isDirty ? "● Unsaved" : "";
     statusEl.className = `wb-save-status ${tab.isDirty ? 'unsaved' : ''}`;
     updateLines();
-    updateHighlight();
+    scheduleHighlight();
     syncScroll();
-    state.renderTabs();
+    if (!wasDirty && tab.isDirty) {
+      state.renderTabs();
+    }
   });
 
   // Indentation, auto-indent & save shortcut

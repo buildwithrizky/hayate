@@ -150,7 +150,7 @@ impl PtyManager {
 
         // Background reader thread
         std::thread::spawn(move || {
-            let mut buf = [0u8; 4096];
+            let mut buf = [0u8; 16384];
             loop {
                 match reader.read(&mut buf) {
                     Ok(0) => break,
@@ -160,6 +160,10 @@ impl PtyManager {
                             session_id: sid.clone(),
                             text,
                         });
+                        // Yield thread if buffer full to prevent CPU starvation on heavy stream
+                        if n == buf.len() {
+                            std::thread::yield_now();
+                        }
                     }
                     Err(_) => break,
                 }

@@ -2,6 +2,7 @@ use portable_pty::{Child, CommandBuilder, MasterPty, PtySize, native_pty_system}
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::io::{Read, Write};
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast;
 
@@ -96,25 +97,29 @@ impl PtyManager {
             .map_err(|e| format!("Failed to open PTY: {e}"))?;
 
         #[cfg(windows)]
-        let shell = std::env::var("COMSPEC").unwrap_or_else(|_| "powershell.exe".to_string());
+        let (shell, shell_args) = resolve_windows_shell();
         #[cfg(not(windows))]
-        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
+        let (shell, shell_args): (String, Vec<String>) = (
+            std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string()),
+            Vec::new(),
+        );
         let mut cmd = CommandBuilder::new(&shell);
+        cmd.args(shell_args);
         cmd.cwd(repo_path);
 
         let home = std::env::var("HOME")
             .or_else(|_| std::env::var("USERPROFILE"))
             .unwrap_or_default();
         let current_path = std::env::var_os("PATH").unwrap_or_default();
-        let mut paths: Vec<std::path::PathBuf> = Vec::new();
+        let mut paths: Vec<PathBuf> = Vec::new();
 
         if !home.is_empty() {
-            paths.push(std::path::PathBuf::from(&home).join(".bun").join("bin"));
+            paths.push(PathBuf::from(&home).join(".bun").join("bin"));
         }
         #[cfg(not(windows))]
         {
-            paths.push(std::path::PathBuf::from("/opt/homebrew/bin"));
-            paths.push(std::path::PathBuf::from("/usr/local/bin"));
+            paths.push(PathBuf::from("/opt/homebrew/bin"));
+            paths.push(PathBuf::from("/usr/local/bin"));
         }
         paths.extend(std::env::split_paths(&current_path));
         let extra_paths = std::env::join_paths(paths)
@@ -339,5 +344,131 @@ impl PtyManager {
 impl Default for PtyManager {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(any(windows, test))]
+fn find_in_paths(name: &str, paths: &[PathBuf]) -> Option<PathBuf> {
+    for dir in paths {
+        let candidate = dir.join(name);
+        if candidate.is_file() {
+            return Some(candidate);
+        }
+    }
+    None
+}
+
+#[cfg(any(windows, test))]
+fn select_shell_candidate(
+    bash_candidates: &[PathBuf],
+    ps_candidates: &[PathBuf],
+    path_dirs: &[PathBuf],
+    comspec: Option<&str>,
+) -> (String, Vec<String>) {
+    // 1. Git Bash candidates
+    if let Some(path) = bash_candidates.iter().find(|p| p.is_file()) {
+        return (
+            path.to_string_lossy().to_string(),
+            vec!["--login".to_string(), "-i".to_string()],
+        );
+    }
+    if let Some(path) = find_in_paths("bash.exe", path_dirs) {
+        return (
+            path.to_string_lossy().to_string(),
+            vec!["--login".to_string(), "-i".to_string()],
+        );
+    }
+
+    // 2. PowerShell candidates
+    if let Some(path) = ps_candidates.iter().find(|p| p.is_file()) {
+        return (path.to_string_lossy().to_string(), Vec::new());
+    }
+    if let Some(path) = find_in_paths("powershell.exe", path_dirs) {
+        return (path.to_string_lossy().to_string(), Vec::new());
+    }
+
+    // 3. Fallback: cmd.exe only when powershell unavailable
+    let fallback = comspec.unwrap_or("cmd.exe").to_string();
+    (fallback, Vec::new())
+}
+
+#[cfg(windows)]
+fn resolve_windows_shell() -> (String, Vec<String>) {
+    // ponytail: static list covers Git standard/user installs; add registry query if custom installs missed.
+    let mut bash_candidates = vec![
+        PathBuf::from(r"C:\Program Files\Git\bin\bash.exe"),
+        PathBuf::from(r"C:\Program Files (x86)\Git\bin\bash.exe"),
+    ];
+    if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
+        let base = PathBuf::from(local_app_data);
+        bash_candidates.push(base.join(r"Programs\Git\bin\bash.exe"));
+        bash_candidates.push(base.join(r"Git\bin\bash.exe"));
+    }
+    if let Ok(prog_files) = std::env::var("ProgramFiles") {
+        bash_candidates.push(PathBuf::from(prog_files).join(r"Git\bin\bash.exe"));
+    }
+    if let Ok(prog_files_x86) = std::env::var("ProgramFiles(x86)") {
+        bash_candidates.push(PathBuf::from(prog_files_x86).join(r"Git\bin\bash.exe"));
+    }
+
+    let mut ps_candidates = vec![PathBuf::from(
+        r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe",
+    )];
+    if let Ok(sys_root) = std::env::var("SystemRoot").or_else(|_| std::env::var("WINDIR")) {
+        ps_candidates
+            .push(PathBuf::from(sys_root).join(r"System32\WindowsPowerShell\v1.0\powershell.exe"));
+    }
+
+    let path_var = std::env::var_os("PATH").unwrap_or_default();
+    let path_dirs: Vec<PathBuf> = std::env::split_paths(&path_var).collect();
+    let comspec = std::env::var("COMSPEC").ok();
+
+    select_shell_candidate(
+        &bash_candidates,
+        &ps_candidates,
+        &path_dirs,
+        comspec.as_deref(),
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_select_shell_prefers_bash_candidate() {
+        let temp_dir = std::env::temp_dir();
+        let fake_bash = temp_dir.join("test_fake_bash.exe");
+        let _ = std::fs::File::create(&fake_bash);
+
+        let (shell, args) = select_shell_candidate(&[fake_bash.clone()], &[], &[], Some("cmd.exe"));
+        let _ = std::fs::remove_file(&fake_bash);
+
+        assert_eq!(shell, fake_bash.to_string_lossy().to_string());
+        assert_eq!(args, vec!["--login".to_string(), "-i".to_string()]);
+    }
+
+    #[test]
+    fn test_select_shell_fallback_powershell_candidate() {
+        let temp_dir = std::env::temp_dir();
+        let fake_ps = temp_dir.join("test_fake_powershell.exe");
+        let _ = std::fs::File::create(&fake_ps);
+
+        let (shell, args) = select_shell_candidate(&[], &[fake_ps.clone()], &[], Some("cmd.exe"));
+        let _ = std::fs::remove_file(&fake_ps);
+
+        assert_eq!(shell, fake_ps.to_string_lossy().to_string());
+        assert!(args.is_empty());
+    }
+
+    #[test]
+    fn test_select_shell_fallback_comspec() {
+        let (shell, args) =
+            select_shell_candidate(&[], &[], &[], Some("C:\\Windows\\system32\\cmd.exe"));
+        assert_eq!(shell, "C:\\Windows\\system32\\cmd.exe");
+        assert!(args.is_empty());
+
+        let (default_shell, _) = select_shell_candidate(&[], &[], &[], None);
+        assert_eq!(default_shell, "cmd.exe");
     }
 }

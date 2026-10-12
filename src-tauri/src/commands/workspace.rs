@@ -8,7 +8,8 @@ fn resolve_dir_path(path: &str) -> Result<String, String> {
     if !p.exists() || !p.is_dir() {
         return Err("Directory path does not exist".to_string());
     }
-    Ok(p.canonicalize().unwrap_or(p).to_string_lossy().to_string())
+    let canonical = p.canonicalize().unwrap_or(p);
+    Ok(workspace::strip_unc_prefix(&canonical.to_string_lossy()))
 }
 
 #[tauri::command]

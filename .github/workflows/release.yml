@@ -12,7 +12,11 @@ jobs:
   release:
     permissions:
       contents: write
-    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -66,3 +70,15 @@ jobs:
             git commit -m "chore(cask): bump hayate to ${APP_VERSION}"
             git push origin main
           fi
+
+  publish-winget:
+    needs: release
+    runs-on: windows-latest
+    steps:
+      - name: Publish to WinGet
+        uses: vedantmgoyal2009/winget-releaser@v2
+        with:
+          identifier: buildwithrizky.Hayate
+          installers-regex: '\.exe$'
+          token: ${{ secrets.WINGET_TOKEN }}
+

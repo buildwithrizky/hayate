@@ -324,8 +324,9 @@ pub async fn reveal_in_finder(path: String) -> Result<(), String> {
     }
     #[cfg(target_os = "windows")]
     {
+        let clean_path = crate::workspace::strip_unc_prefix(p).replace('/', "\\");
         tokio::process::Command::new("explorer")
-            .arg(format!("/select,{p}"))
+            .arg(format!("/select,{clean_path}"))
             .status()
             .await
             .map_err(|e| format!("Failed to reveal in Explorer: {e}"))?;

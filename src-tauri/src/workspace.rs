@@ -49,12 +49,24 @@ pub struct UploadImageResult {
     pub preview_url: String,
 }
 
+pub fn strip_unc_prefix(path_str: &str) -> String {
+    if let Some(stripped) = path_str.strip_prefix(r"\\?\UNC\") {
+        format!(r"\\{}", stripped)
+    } else if let Some(stripped) = path_str.strip_prefix(r"\\?\") {
+        stripped.to_string()
+    } else {
+        path_str.to_string()
+    }
+}
+
 pub fn get_hayate_dir() -> PathBuf {
     if let Ok(dir) = std::env::var("HAYATE_CONFIG_DIR").or_else(|_| std::env::var("ADE_CONFIG_DIR"))
     {
         PathBuf::from(dir)
     } else {
-        let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+        let home = std::env::var("HOME")
+            .or_else(|_| std::env::var("USERPROFILE"))
+            .unwrap_or_else(|_| ".".to_string());
         PathBuf::from(home).join(".hayate")
     }
 }
@@ -127,6 +139,7 @@ pub async fn list_files(target_path: &str) -> Result<FilesResult, String> {
     let resolved = PathBuf::from(target_path)
         .canonicalize()
         .map_err(|e| format!("Invalid path {target_path}: {e}"))?;
+    let resolved_str = strip_unc_prefix(&resolved.to_string_lossy());
 
     let mut entries = fs::read_dir(&resolved).await.map_err(|e| e.to_string())?;
     let mut items = Vec::new();
@@ -137,7 +150,7 @@ pub async fn list_files(target_path: &str) -> Result<FilesResult, String> {
             continue;
         }
 
-        let full_path = entry.path().to_string_lossy().to_string();
+        let full_path = strip_unc_prefix(&entry.path().to_string_lossy());
         let mut is_directory = false;
         let mut size = 0u64;
         let mut modified_time = 0u64;
@@ -170,7 +183,7 @@ pub async fn list_files(target_path: &str) -> Result<FilesResult, String> {
     });
 
     Ok(FilesResult {
-        path: resolved.to_string_lossy().to_string(),
+        path: resolved_str,
         items,
     })
 }
@@ -308,6 +321,22 @@ mod tests {
         assert!(res.relative_path.ends_with(".png"));
         assert_eq!(res.label, res.relative_path);
         let _ = fs::remove_file(PathBuf::from(&res.path)).await;
+    }
+
+    #[test]
+    fn test_strip_unc_prefix() {
+        assert_eq!(
+            strip_unc_prefix(r"\\?\C:\Projects\hayate"),
+            r"C:\Projects\hayate"
+        );
+        assert_eq!(
+            strip_unc_prefix(r"\\?\UNC\server\share\file"),
+            r"\\server\share\file"
+        );
+        assert_eq!(
+            strip_unc_prefix("/Users/username/repo"),
+            "/Users/username/repo"
+        );
     }
 
     #[test]

@@ -18,12 +18,24 @@ pub struct SyncStatus {
 }
 
 fn extended_path() -> String {
-    let home = std::env::var("HOME").unwrap_or_default();
-    let curr = std::env::var("PATH").unwrap_or_default();
-    format!(
-        "{}/.bun/bin:/opt/homebrew/bin:/usr/local/bin:{}",
-        home, curr
-    )
+    let home = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .unwrap_or_default();
+    let current_path = std::env::var_os("PATH").unwrap_or_default();
+    let mut paths: Vec<std::path::PathBuf> = Vec::new();
+
+    if !home.is_empty() {
+        paths.push(std::path::PathBuf::from(&home).join(".bun").join("bin"));
+    }
+    #[cfg(not(windows))]
+    {
+        paths.push(std::path::PathBuf::from("/opt/homebrew/bin"));
+        paths.push(std::path::PathBuf::from("/usr/local/bin"));
+    }
+    paths.extend(std::env::split_paths(&current_path));
+    std::env::join_paths(paths)
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_default()
 }
 
 async fn run_git_cmd(repo_path: &str, args: &[&str]) -> Result<String, String> {

@@ -95,16 +95,31 @@ impl PtyManager {
             })
             .map_err(|e| format!("Failed to open PTY: {e}"))?;
 
+        #[cfg(windows)]
+        let shell = std::env::var("COMSPEC").unwrap_or_else(|_| "powershell.exe".to_string());
+        #[cfg(not(windows))]
         let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
         let mut cmd = CommandBuilder::new(&shell);
         cmd.cwd(repo_path);
 
-        let home = std::env::var("HOME").unwrap_or_default();
-        let current_path = std::env::var("PATH").unwrap_or_default();
-        let extra_paths = format!(
-            "{}/.bun/bin:/opt/homebrew/bin:/usr/local/bin:{}",
-            home, current_path
-        );
+        let home = std::env::var("HOME")
+            .or_else(|_| std::env::var("USERPROFILE"))
+            .unwrap_or_default();
+        let current_path = std::env::var_os("PATH").unwrap_or_default();
+        let mut paths: Vec<std::path::PathBuf> = Vec::new();
+
+        if !home.is_empty() {
+            paths.push(std::path::PathBuf::from(&home).join(".bun").join("bin"));
+        }
+        #[cfg(not(windows))]
+        {
+            paths.push(std::path::PathBuf::from("/opt/homebrew/bin"));
+            paths.push(std::path::PathBuf::from("/usr/local/bin"));
+        }
+        paths.extend(std::env::split_paths(&current_path));
+        let extra_paths = std::env::join_paths(paths)
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_default();
 
         cmd.env("TERM", "xterm-256color");
         cmd.env("PATH", extra_paths);

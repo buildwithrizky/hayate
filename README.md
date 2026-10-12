@@ -37,6 +37,12 @@ brew tap buildwithrizky/tap
 brew install --cask hayate
 ```
 
+### Windows (via WinGet)
+
+```powershell
+winget install buildwithrizky.Hayate
+```
+
 ### Direct Download
 
 Download pre-built `.dmg` from [GitHub Releases](https://github.com/buildwithrizky/hayate/releases).

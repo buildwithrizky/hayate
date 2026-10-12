@@ -74,6 +74,7 @@ jobs:
   publish-winget:
     needs: release
     runs-on: windows-latest
+    continue-on-error: true
     steps:
       - name: Publish to WinGet
         uses: vedantmgoyal2009/winget-releaser@v2

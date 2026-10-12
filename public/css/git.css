@@ -42,13 +42,14 @@
   color: var(--text-muted);
   cursor: var(--cursor-pointer);
   user-select: var(--user-select-none);
-  padding: var(--space-3xs) var(--space-2xs);
-  border-radius: var(--radius-sm);
-  transition: var(--transition-color-fast);
+  padding: var(--space-3xs) var(--space-sm);
+  border-radius: var(--radius-pill);
+  transition: var(--transition-all-fast);
 }
 
 .rs-commit-opt:hover {
   color: var(--text-pure);
+  background: var(--bg-subtle);
 }
 
 .rs-commit-opt input[type="checkbox"] {
@@ -58,7 +59,7 @@
   height: var(--size-icon-xs);
   background: var(--bg-subtle);
   border: var(--border-default-strong);
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-sm);
   cursor: var(--cursor-pointer);
   display: var(--display-inline-flex);
   align-items: var(--align-center);
@@ -419,25 +420,41 @@
   gap: var(--space-xs);
 }
 
-.rs-commit-btn-main {
+.rs-commit-btn-main,
+.rs-commit-btn-sub {
   background: var(--bg-active);
   border: var(--border-default-strong);
   color: var(--text-pure);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  padding: var(--space-3xs) var(--space-md);
+  cursor: var(--cursor-pointer);
+  transition: var(--transition-all-normal);
+  display: var(--display-inline-flex);
+  align-items: var(--align-center);
+  gap: var(--space-xs);
 }
 
-.rs-commit-btn-main:hover {
+.rs-commit-btn-main:hover,
+.rs-commit-btn-sub:hover {
   background: var(--bg-hover);
   border-color: var(--border-focus);
 }
 
-.rs-commit-btn-sub {
+.rs-commit-btn-main:active,
+.rs-commit-btn-sub:active {
   background: var(--bg-subtle);
-  border: var(--border-default-subtle);
-  color: var(--text-muted);
 }
 
-.rs-commit-btn-sub:hover {
-  background: var(--bg-hover);
-  border-color: var(--border-strong);
-  color: var(--text-main);
+.rs-commit-btn-main svg,
+.rs-commit-btn-sub svg {
+  flex-shrink: var(--flex-shrink-0);
+  color: var(--text-dim);
+}
+
+.rs-commit-btn-main:hover svg,
+.rs-commit-btn-sub:hover svg {
+  color: var(--text-pure);
 }

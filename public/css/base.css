@@ -38,3 +38,8 @@ html, body {
   background: var(--accent-blue);
   box-shadow: var(--accent-blue-glow-sm);
 }
+
+/* Global Utility */
+.is-hidden {
+  display: var(--display-none) !important;
+}

@@ -70,10 +70,7 @@ import {
   toggleSidebar,
   toggleRightSidebar,
   switchRightPanel,
-  reloadRightSidebar,
-  updateStatusbar,
-  loadSystemStatus,
-  startSystemStatusLoop
+  reloadRightSidebar
 } from "./layout.js";
 
 export function escapeHtml(str) {
@@ -417,17 +414,5 @@ export class StateManager {
 
   reloadRightSidebar() {
     return reloadRightSidebar(this);
-  }
-
-  updateStatusbar() {
-    return updateStatusbar(this);
-  }
-
-  loadSystemStatus() {
-    return loadSystemStatus(this);
-  }
-
-  startSystemStatusLoop() {
-    return startSystemStatusLoop(this);
   }
 }

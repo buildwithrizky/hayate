@@ -264,5 +264,4 @@ window.addEventListener("DOMContentLoaded", () => {
   app.initPty();
   app.initFsWatcher();
   app.loadWorkspaces();
-  app.startSystemStatusLoop();
 });

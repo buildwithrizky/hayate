@@ -102,7 +102,6 @@ export function initFsWatcher(state) {
       } else {
         await state.fetchGitStatusData();
       }
-      state.updateStatusbar();
     }, 200);
   };
 

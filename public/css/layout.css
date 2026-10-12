@@ -118,7 +118,7 @@
   position: var(--pos-relative);
   flex-shrink: var(--flex-shrink-0);
   user-select: var(--user-select-none);
-  z-index: var(--z-statusbar);
+  z-index: var(--z-handle);
   transition: var(--transition-handle);
 }
 
@@ -196,41 +196,3 @@ body.is-resizing .right-sidebar {
   overflow: var(--overflow-hidden);
 }
 
-/* Statusbar Footer (Full Width 100vw) */
-.app-statusbar {
-  width: var(--full-pct);
-  height: var(--size-statusbar-h);
-  min-height: var(--size-statusbar-h);
-  background: var(--bg-subtle);
-  border-top: var(--border-default-subtle);
-  display: var(--display-flex);
-  align-items: var(--align-center);
-  justify-content: var(--justify-between);
-  padding: var(--size-0) var(--space-lg);
-  font-size: var(--font-size-sm);
-  color: var(--text-muted);
-  user-select: var(--user-select-none);
-  flex-shrink: var(--flex-shrink-0);
-  z-index: var(--z-statusbar);
-}
-
-.statusbar-left,
-.statusbar-right {
-  display: var(--display-flex);
-  align-items: var(--align-center);
-  gap: var(--gap-md);
-  overflow: var(--overflow-hidden);
-  text-overflow: var(--text-overflow-ellipsis);
-  white-space: var(--whitespace-nowrap);
-}
-
-.sb-item {
-  display: var(--display-inline-flex);
-  align-items: var(--align-center);
-  gap: var(--gap-xs);
-}
-
-.sb-divider {
-  color: var(--border-strong);
-  font-size: var(--font-size-xs);
-}

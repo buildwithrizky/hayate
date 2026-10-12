@@ -76,61 +76,12 @@ export function reloadRightSidebar(state) {
   }
   // Refresh git status so status badges stay in sync
   state.fetchGitStatusData().then(() => {
-    updateStatusbar(state);
     if (state.activeRightPanel === "explorer") {
       state.loadExplorer();
     } else {
       state.loadGitStatus();
     }
   });
-}
-
-export function updateStatusbar(state) {
-  const ws = state.getActiveWorkspace();
-  const wsEl = document.getElementById("sb-ws-status");
-  const gitEl = document.getElementById("sb-git-branch");
-
-  if (wsEl) {
-    wsEl.textContent = ws ? ws.name : "No workspace";
-    wsEl.title = ws ? ws.path : "";
-  }
-
-  if (gitEl) {
-    if (!ws) {
-      gitEl.textContent = "Git: -";
-    } else if (state.gitStatusData?.branch) {
-      gitEl.textContent = `Git: ${state.gitStatusData.branch}`;
-    } else {
-      gitEl.textContent = "Git: -";
-    }
-  }
-}
-
-export async function loadSystemStatus(state) {
-  const portEl = document.getElementById("sb-active-port");
-  const ramEl = document.getElementById("sb-system-ram");
-
-  try {
-    const data = await tauriInvoke("get_system_status");
-    if (data) {
-      if (portEl) {
-        portEl.textContent = `⚡ Tauri IPC`;
-      }
-      if (ramEl) {
-        ramEl.textContent = `🧠 RAM: ${data.processRssMb} MB | System: ${data.systemUsedGb} / ${data.systemTotalGb} GB (${data.systemPercent}%)`;
-      }
-      return;
-    }
-  } catch {}
-
-  if (portEl) portEl.textContent = `⚡ Tauri IPC`;
-}
-
-export function startSystemStatusLoop(state) {
-  loadSystemStatus(state);
-  setInterval(() => {
-    loadSystemStatus(state);
-  }, 4000);
 }
 
 export function setupSidebarResizers(app) {

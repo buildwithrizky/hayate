@@ -9,7 +9,6 @@ export async function fetchGitStatusData(state) {
   if (!ws) {
     state.gitStatusData = null;
     state.gitignoreRules = [];
-    state.updateStatusbar();
     return null;
   }
   await state.loadGitignore();
@@ -27,12 +26,10 @@ export async function fetchGitStatusData(state) {
           badgeEl.style.display = "none";
         }
       }
-      state.updateStatusbar();
       return data;
     }
   } catch {}
   state.gitStatusData = null;
-  state.updateStatusbar();
   return null;
 }
 

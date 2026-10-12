@@ -196,7 +196,6 @@
   --size-diff-sign: 22px;
   --size-badge-min: 22px;
   --size-tab-more-h: 24px;
-  --size-statusbar-h: 24px;
   --size-btn-icon: 26px;
   --size-tab-h: 28px;
   --size-panel-header-h: 34px;
@@ -232,7 +231,6 @@
   --z-handle-grab: 2;
   --z-sidebar-right: 5;
   --z-handle: 10;
-  --z-statusbar: 10;
   --z-header: 20;
   --z-tabs-bar: 100;
   --z-modal-backdrop: 100;

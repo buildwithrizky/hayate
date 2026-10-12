@@ -26,13 +26,24 @@ import { mountBrowserInstance } from "./views/browser.js";
 import {
   mountEditorInstance,
   mountMarkdownInstance,
+  disposeEditorInstance,
+  getEditorInstance,
   loadFileForTab,
   saveTabContent,
   getPrismLanguage,
   highlightCode,
   renderMarkdownHtml
 } from "./views/editor.js";
-import { mountDiffInstance, loadDiffForTab, renderDiffTableHtml } from "./views/diff.js";
+import {
+  mountDiffInstance,
+  loadDiffForTab,
+  disposeDiffInstance,
+  getDiffEditorInstance
+} from "./views/diff.js";
+import {
+  mountImageInstance,
+  disposeImageInstance
+} from "./views/image.js";
 import {
   loadGitignore,
   matchGitignore,
@@ -198,7 +209,7 @@ export class StateManager {
     return switchTab(this, tabId);
   }
 
-  closeTab(tabId) {
+  async closeTab(tabId) {
     return closeTab(this, tabId);
   }
 
@@ -265,6 +276,14 @@ export class StateManager {
     return mountEditorInstance(this, tab);
   }
 
+  disposeEditorInstance(tabId) {
+    return disposeEditorInstance(tabId);
+  }
+
+  getEditorInstance(tabId) {
+    return getEditorInstance(tabId);
+  }
+
   loadFileForTab(tab) {
     return loadFileForTab(this, tab);
   }
@@ -282,8 +301,21 @@ export class StateManager {
     return loadDiffForTab(this, tab);
   }
 
-  renderDiffTableHtml(rawDiff) {
-    return renderDiffTableHtml(rawDiff);
+  disposeDiffInstance(tabId) {
+    return disposeDiffInstance(tabId);
+  }
+
+  getDiffEditorInstance(tabId) {
+    return getDiffEditorInstance(tabId);
+  }
+
+  // Views - Image
+  mountImageInstance(tab) {
+    return mountImageInstance(this, tab);
+  }
+
+  disposeImageInstance(tabId) {
+    return disposeImageInstance(tabId);
   }
 
   // Explorer

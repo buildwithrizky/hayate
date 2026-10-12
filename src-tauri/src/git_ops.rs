@@ -400,3 +400,28 @@ pub async fn git_discard(repo_path: &str, file: Option<&str>, all: bool) -> Resu
 
     Ok(())
 }
+
+// ponytail: git show reads file directly without working-tree changes, upgrade to streaming if handling huge files
+pub async fn git_show_file(repo_path: &str, spec: &str) -> Result<String, String> {
+    if repo_path.trim().is_empty() {
+        return Err("repo_path required".to_string());
+    }
+    if spec.trim().is_empty() {
+        return Err("spec required".to_string());
+    }
+
+    let output = silent_command("git")
+        .args(["show", spec])
+        .current_dir(repo_path)
+        .env("PATH", extended_path())
+        .output()
+        .await
+        .map_err(|e| format!("git show failed: {e}"))?;
+
+    if !output.status.success() {
+        let err = String::from_utf8_lossy(&output.stderr);
+        return Err(err.trim().to_string());
+    }
+
+    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+}

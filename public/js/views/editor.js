@@ -1,9 +1,24 @@
+if (typeof window !== "undefined") {
+  window.MonacoEnvironment = {
+    getWorkerUrl: () => "/vendor/monaco/editor.worker.js"
+  };
+}
+
+import { monaco } from "../../vendor/monaco/monaco.js";
 import { tauriInvoke } from "../api.js";
 import { escapeHtml } from "../state.js";
+import { renderMarkdownHtml } from "./markdown.js";
 
-// Language helper for PrismJS syntax highlighting
-export function getPrismLanguage(filePath) {
+export { renderMarkdownHtml };
+
+// Map tabId -> monaco.editor.IStandaloneCodeEditor
+const editorInstances = new Map();
+
+export function getMonacoLanguage(filePath) {
   if (!filePath) return "javascript";
+  const name = filePath.split("/").pop().toLowerCase();
+  if (name === "dockerfile" || name.endsWith(".dockerfile")) return "dockerfile";
+
   const ext = filePath.split(".").pop().toLowerCase();
   const map = {
     js: "javascript",
@@ -12,120 +27,80 @@ export function getPrismLanguage(filePath) {
     ts: "typescript",
     mts: "typescript",
     cts: "typescript",
-    jsx: "jsx",
-    tsx: "tsx",
     json: "json",
     json5: "json",
     html: "html",
     htm: "html",
     svg: "html",
-    xml: "html",
     css: "css",
-    py: "python",
-    sh: "bash",
-    bash: "bash",
-    zsh: "bash",
+    scss: "css",
+    less: "css",
     md: "markdown",
     markdown: "markdown",
-    yml: "yaml",
-    yaml: "yaml",
-    sql: "sql",
-    diff: "diff",
-    patch: "diff",
+    py: "python",
     rs: "rust",
-    go: "go"
+    sh: "shell",
+    bash: "shell",
+    zsh: "shell",
+    sql: "sql",
+    yaml: "yaml",
+    yml: "yaml",
+    toml: "ini",
+    ini: "ini",
+    go: "go",
+    cpp: "cpp",
+    cc: "cpp",
+    c: "cpp",
+    h: "cpp",
+    hpp: "cpp",
+    dockerfile: "dockerfile"
   };
-  return map[ext] || "plain";
+  return map[ext] || "plaintext";
 }
 
-export function highlightCode(code, lang) {
-  if (typeof window !== "undefined" && window.Prism) {
-    const grammar = window.Prism.languages[lang] || window.Prism.languages.javascript || window.Prism.languages.plain;
-    if (grammar) {
-      return window.Prism.highlight(code, grammar, lang);
-    }
-  }
+// Backward compatibility Prism helper
+export function getPrismLanguage(filePath) {
+  return getMonacoLanguage(filePath);
+}
+
+export function highlightCode(code) {
   return escapeHtml(code);
 }
 
-// Pure lightweight Markdown renderer
-export function renderMarkdownHtml(mdText) {
-  if (!mdText) return "";
-  let src = escapeHtml(mdText);
-
-  // Code blocks ```lang ... ```
-  src = src.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, (_m, _lang, code) => {
-    return `<pre><code>${code.trim()}</code></pre>`;
-  });
-
-  // Inline code `...`
-  src = src.replace(/`([^`\n]+)`/g, "<code>$1</code>");
-
-  // Headings
-  src = src.replace(/^#### (.*?)$/gm, "<h4>$1</h4>");
-  src = src.replace(/^### (.*?)$/gm, "<h3>$1</h3>");
-  src = src.replace(/^## (.*?)$/gm, "<h2>$1</h2>");
-  src = src.replace(/^# (.*?)$/gm, "<h1>$1</h1>");
-
-  // Bold & Italic
-  src = src.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-  src = src.replace(/\*([^*]+)\*/g, "<em>$1</em>");
-
-  // Blockquotes
-  src = src.replace(/^> (.*?)$/gm, "<blockquote>$1</blockquote>");
-
-  // Horizontal Rule
-  src = src.replace(/^---$/gm, "<hr />");
-
-  // Links [text](url)
-  src = src.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-
-  // Tables: simple detection of | col | col |
-  const lines = src.split("\n");
-  const parsedLines = [];
-  let inTable = false;
-  let tableRows = [];
-
-  const flushTable = () => {
-    if (!tableRows.length) return;
-    let tableHtml = "<table>";
-    tableRows.forEach((r, idx) => {
-      if (idx === 1 && r.some((c) => /^:?-+:?$/.test(c.trim()))) {
-        return; // Skip separator line
-      }
-      const tag = idx === 0 ? "th" : "td";
-      tableHtml += "<tr>" + r.map((c) => `<${tag}>${c.trim()}</${tag}>`).join("") + "</tr>";
-    });
-    tableHtml += "</table>";
-    parsedLines.push(tableHtml);
-    tableRows = [];
-    inTable = false;
-  };
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (line.trim().startsWith("|") && line.trim().endsWith("|")) {
-      inTable = true;
-      const cells = line.trim().slice(1, -1).split("|");
-      tableRows.push(cells);
-    } else {
-      if (inTable) flushTable();
-      // Unordered lists
-      if (/^\s*[-*]\s+(.*)$/.test(line)) {
-        parsedLines.push(`<li>${line.replace(/^\s*[-*]\s+/, "")}</li>`);
-      } else if (/^\s*\d+\.\s+(.*)$/.test(line)) {
-        parsedLines.push(`<li>${line.replace(/^\s*\d+\.\s+/, "")}</li>`);
-      } else if (line.trim().length > 0 && !line.startsWith("<h") && !line.startsWith("<blockquote") && !line.startsWith("<pre")) {
-        parsedLines.push(`<p>${line}</p>`);
-      } else {
-        parsedLines.push(line);
-      }
-    }
-  }
-  if (inTable) flushTable();
-
-  return parsedLines.join("\n");
+export function getEditorInstance(tabId) {
+  return editorInstances.get(tabId) || null;
 }
+
+export function disposeEditorInstance(tabId) {
+  const editor = editorInstances.get(tabId);
+  if (editor) {
+    const model = editor.getModel();
+    editor.dispose();
+    if (model) {
+      model.dispose();
+    }
+    editorInstances.delete(tabId);
+  }
+}
+
+export function getWorkspaceRelativePath(state, filePath) {
+  if (!filePath) return "";
+  const ws = state?.getActiveWorkspace?.();
+  const wsPath = ws?.path;
+  if (wsPath) {
+    if (filePath === wsPath) return filePath;
+    const prefix = wsPath.endsWith("/") || wsPath.endsWith("\\") ? wsPath : `${wsPath}/`;
+    if (filePath.startsWith(prefix)) return filePath.slice(prefix.length);
+    const prefixWin = wsPath.replace(/\//g, "\\") + "\\";
+    if (filePath.startsWith(prefixWin)) return filePath.slice(prefixWin.length);
+  }
+  return filePath;
+}
+
+const ICON_SAVE = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>';
+const ICON_CLOSE = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+const ICON_EYE = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+const ICON_CODE = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>';
 
 export function mountMarkdownInstance(state, tab) {
   const host = document.getElementById("terminal-host");
@@ -136,78 +111,83 @@ export function mountMarkdownInstance(state, tab) {
     <div class="wb-markdown-bar">
       <div class="wb-bar-meta">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="wb-bar-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-        <span class="wb-bar-path" title="${escapeHtml(tab.filePath || 'Scratchpad')}">${escapeHtml(tab.filePath ? tab.filePath.split('/').pop() : 'Scratchpad.md')}</span>
+        <span class="wb-bar-path" title="${escapeHtml(tab.filePath || 'Scratchpad')}">${escapeHtml(tab.filePath ? getWorkspaceRelativePath(state, tab.filePath) : 'Scratchpad.md')}</span>
         <span class="wb-save-status ${tab.isDirty ? 'unsaved' : ''}">${tab.isDirty ? '● Unsaved' : ''}</span>
       </div>
       <div class="wb-bar-actions">
-        <button class="btn btn-xs btn-mode-toggle">${tab.isEditMode ? 'View Markdown' : 'Edit Source'}</button>
-        <button class="btn btn-xs btn-primary btn-save" title="Save file (Ctrl+S)">Save</button>
+        <button class="btn btn-icon btn-xs btn-mode-toggle" title="${tab.isEditMode ? 'View Markdown' : 'Edit Source'}">${tab.isEditMode ? ICON_EYE : ICON_CODE}</button>
+        <button class="btn btn-icon btn-xs btn-save" title="Save file (Ctrl+S / Cmd+S)">${ICON_SAVE}</button>
+        <button class="btn btn-icon btn-xs btn-close" title="Close tab">${ICON_CLOSE}</button>
       </div>
     </div>
     <div class="wb-markdown-content wb-md-preview" style="${tab.isEditMode ? 'display:none;' : ''}">
       ${renderMarkdownHtml(tab.content || '*Empty markdown document*')}
     </div>
-    <div class="wb-editor-body" style="${tab.isEditMode ? 'display:flex;' : 'display:none;'}">
-      <div class="wb-line-numbers">1</div>
-      <textarea class="wb-textarea" spellcheck="false" placeholder="Write markdown here...">${escapeHtml(tab.content || '')}</textarea>
-    </div>
+    <div class="wb-monaco-host wb-md-editor-host" style="${tab.isEditMode ? 'display:block;' : 'display:none;'}"></div>
   `;
   host.appendChild(container);
 
   const previewEl = container.querySelector(".wb-markdown-content");
-  const editorBody = container.querySelector(".wb-editor-body");
-  const textarea = container.querySelector(".wb-textarea");
-  const lineNums = container.querySelector(".wb-line-numbers");
+  const editorHost = container.querySelector(".wb-md-editor-host");
   const toggleBtn = container.querySelector(".btn-mode-toggle");
   const saveBtn = container.querySelector(".btn-save");
+  const closeBtn = container.querySelector(".btn-close");
   const statusEl = container.querySelector(".wb-save-status");
 
-  const updateLines = () => {
-    const count = (textarea.value.split("\n").length) || 1;
-    let nums = "";
-    for (let i = 1; i <= count; i++) nums += i + "\n";
-    lineNums.textContent = nums;
-  };
-  updateLines();
+  const editor = monaco.editor.create(editorHost, {
+    value: tab.content || "",
+    language: "markdown",
+    theme: "vs-dark",
+    automaticLayout: true,
+    minimap: { enabled: false },
+    tabSize: 2,
+    scrollBeyondLastLine: false
+  });
 
-  textarea.addEventListener("input", () => {
-    tab.content = textarea.value;
+  editorInstances.set(tab.id, editor);
+
+  editor.onDidChangeModelContent(() => {
+    const wasDirty = tab.isDirty;
+    tab.content = editor.getValue();
     tab.isDirty = tab.content !== tab.savedContent;
     statusEl.textContent = tab.isDirty ? "● Unsaved" : "";
     statusEl.className = `wb-save-status ${tab.isDirty ? 'unsaved' : ''}`;
-    updateLines();
-    state.renderTabs();
-  });
-
-  textarea.addEventListener("scroll", () => {
-    lineNums.scrollTop = textarea.scrollTop;
-  });
-
-  textarea.addEventListener("keydown", (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
-      e.preventDefault();
-      saveTabContent(state, tab);
+    if (wasDirty !== tab.isDirty) {
+      state.renderTabs();
     }
+  });
+
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+    saveTabContent(state, tab);
+  });
+
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyP, () => {
+    editor.trigger("workbench", "editor.action.quickCommand");
   });
 
   toggleBtn.onclick = () => {
     tab.isEditMode = !tab.isEditMode;
     if (tab.isEditMode) {
-      toggleBtn.textContent = "View Markdown";
+      toggleBtn.title = "View Markdown";
+      toggleBtn.innerHTML = ICON_EYE;
       previewEl.style.display = "none";
-      editorBody.style.display = "flex";
-      textarea.value = tab.content;
-      updateLines();
-      textarea.focus();
+      editorHost.style.display = "block";
+      if (editor.getValue() !== tab.content) {
+        editor.setValue(tab.content || "");
+      }
+      editor.layout();
+      editor.focus();
     } else {
-      toggleBtn.textContent = "Edit Source";
-      editorBody.style.display = "none";
+      toggleBtn.title = "Edit Source";
+      toggleBtn.innerHTML = ICON_CODE;
+      editorHost.style.display = "none";
       previewEl.style.display = "block";
       previewEl.innerHTML = renderMarkdownHtml(tab.content || "*Empty markdown document*");
     }
   };
 
   saveBtn.onclick = () => saveTabContent(state, tab);
+  if (closeBtn) closeBtn.onclick = () => state.closeTab(tab.id);
 
   state.viewContainers.set(tab.id, container);
 }
@@ -217,114 +197,58 @@ export function mountEditorInstance(state, tab) {
   const container = document.createElement("div");
   container.id = `view-container-${tab.id}`;
   container.className = "terminal-instance wb-view hidden";
-  const lang = getPrismLanguage(tab.filePath);
+  const lang = getMonacoLanguage(tab.filePath);
+
   container.innerHTML = `
     <div class="wb-editor-bar">
       <div class="wb-bar-meta">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="wb-bar-icon"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-        <span class="wb-bar-path" title="${escapeHtml(tab.filePath || 'Scratch')}">${escapeHtml(tab.filePath ? tab.filePath.split('/').pop() : 'Scratchpad')}</span>
+        <span class="wb-bar-path" title="${escapeHtml(tab.filePath || 'Scratch')}">${escapeHtml(tab.filePath ? getWorkspaceRelativePath(state, tab.filePath) : 'Scratchpad')}</span>
         <span class="wb-save-status ${tab.isDirty ? 'unsaved' : ''}">${tab.isDirty ? '● Unsaved' : ''}</span>
       </div>
       <div class="wb-bar-actions">
-        <button class="btn btn-xs btn-primary btn-save" title="Save file (Ctrl+S / Cmd+S)">Save</button>
-        <button class="btn btn-xs btn-close" title="Close this tab">Close</button>
+        <button class="btn btn-icon btn-xs btn-save" title="Save file (Ctrl+S / Cmd+S)">${ICON_SAVE}</button>
+        <button class="btn btn-icon btn-xs btn-close" title="Close tab">${ICON_CLOSE}</button>
       </div>
     </div>
-    <div class="wb-editor-body">
-      <div class="wb-line-numbers">1</div>
-      <div class="wb-editor-stage">
-        <pre class="wb-highlight-layer"><code class="language-${lang}">${highlightCode(tab.content || '', lang)}</code></pre>
-        <textarea class="wb-textarea" spellcheck="false" placeholder="Type code here...">${escapeHtml(tab.content || '')}</textarea>
-      </div>
-    </div>
+    <div class="wb-monaco-host"></div>
   `;
   host.appendChild(container);
 
-  const textarea = container.querySelector(".wb-textarea");
-  const highlightCodeEl = container.querySelector(".wb-highlight-layer code");
-  const highlightLayer = container.querySelector(".wb-highlight-layer");
-  const lineNums = container.querySelector(".wb-line-numbers");
+  const editorHost = container.querySelector(".wb-monaco-host");
   const saveBtn = container.querySelector(".btn-save");
   const closeBtn = container.querySelector(".btn-close");
   const statusEl = container.querySelector(".wb-save-status");
 
-  const updateLines = () => {
-    const count = (textarea.value.split("\n").length) || 1;
-    let nums = "";
-    for (let i = 1; i <= count; i++) nums += i + "\n";
-    lineNums.textContent = nums;
-  };
+  const editor = monaco.editor.create(editorHost, {
+    value: tab.content || "",
+    language: lang,
+    theme: "vs-dark",
+    automaticLayout: true,
+    minimap: { enabled: false },
+    tabSize: 2,
+    scrollBeyondLastLine: false
+  });
 
-  const updateHighlight = () => {
-    const currentLang = getPrismLanguage(tab.filePath);
-    highlightCodeEl.className = `language-${currentLang}`;
-    const codeVal = textarea.value;
-    // Preserve trailing newline space so cursor matches
-    const paddedVal = codeVal.endsWith("\n") ? codeVal + " " : codeVal;
-    highlightCodeEl.innerHTML = highlightCode(paddedVal, currentLang);
-  };
+  editorInstances.set(tab.id, editor);
 
-  let highlightTimer = null;
-  const scheduleHighlight = () => {
-    if (highlightTimer) clearTimeout(highlightTimer);
-    highlightTimer = setTimeout(() => {
-      updateHighlight();
-      highlightTimer = null;
-    }, 50);
-  };
-
-  updateLines();
-  updateHighlight();
-
-  const syncScroll = () => {
-    lineNums.scrollTop = textarea.scrollTop;
-    highlightLayer.scrollTop = textarea.scrollTop;
-    highlightLayer.scrollLeft = textarea.scrollLeft;
-  };
-
-  textarea.addEventListener("scroll", syncScroll);
-
-  textarea.addEventListener("input", () => {
+  editor.onDidChangeModelContent(() => {
     const wasDirty = tab.isDirty;
-    tab.content = textarea.value;
+    tab.content = editor.getValue();
     tab.isDirty = tab.content !== tab.savedContent;
     statusEl.textContent = tab.isDirty ? "● Unsaved" : "";
     statusEl.className = `wb-save-status ${tab.isDirty ? 'unsaved' : ''}`;
-    updateLines();
-    scheduleHighlight();
-    syncScroll();
-    if (!wasDirty && tab.isDirty) {
+    if (wasDirty !== tab.isDirty) {
       state.renderTabs();
     }
   });
 
-  // Indentation, auto-indent & save shortcut
-  textarea.addEventListener("keydown", (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
-      e.preventDefault();
-      saveTabContent(state, tab);
-    } else if (e.key === "Tab") {
-      e.preventDefault();
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      textarea.value = textarea.value.substring(0, start) + "  " + textarea.value.substring(end);
-      textarea.selectionStart = textarea.selectionEnd = start + 2;
-      textarea.dispatchEvent(new Event("input"));
-    } else if (e.key === "Enter") {
-      // Auto-indent: keep leading indentation of previous line
-      const pos = textarea.selectionStart;
-      const textBefore = textarea.value.substring(0, pos);
-      const lastLine = textBefore.split("\n").pop() || "";
-      const match = lastLine.match(/^(\s+)/);
-      if (match) {
-        e.preventDefault();
-        const indent = match[1];
-        const textAfter = textarea.value.substring(textarea.selectionEnd);
-        textarea.value = textBefore + "\n" + indent + textAfter;
-        textarea.selectionStart = textarea.selectionEnd = pos + 1 + indent.length;
-        textarea.dispatchEvent(new Event("input"));
-      }
-    }
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+    saveTabContent(state, tab);
+  });
+
+  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyP, () => {
+    editor.trigger("workbench", "editor.action.quickCommand");
   });
 
   saveBtn.onclick = () => saveTabContent(state, tab);
@@ -342,18 +266,31 @@ export async function loadFileForTab(state, tab) {
       tab.savedContent = data.content;
       tab.isDirty = false;
 
+      const editor = editorInstances.get(tab.id);
+      if (editor) {
+        if (editor.getValue() !== tab.content) {
+          editor.setValue(tab.content);
+        }
+        const model = editor.getModel();
+        if (model && tab.type !== "markdown") {
+          const lang = getMonacoLanguage(tab.filePath);
+          monaco.editor.setModelLanguage(model, lang);
+        }
+      }
+
       const container = state.viewContainers.get(tab.id);
       if (container) {
-        const textarea = container.querySelector(".wb-textarea");
-        if (textarea) {
-          textarea.value = tab.content;
-          textarea.dispatchEvent(new Event("input"));
+        const statusEl = container.querySelector(".wb-save-status");
+        if (statusEl) {
+          statusEl.textContent = "";
+          statusEl.className = "wb-save-status";
         }
         const preview = container.querySelector(".wb-md-preview");
         if (preview) {
           preview.innerHTML = renderMarkdownHtml(tab.content || "*Empty markdown document*");
         }
       }
+      state.renderTabs();
     }
   } catch (e) {
     console.error("Failed to load file content for tab", e);
@@ -369,6 +306,14 @@ export async function saveTabContent(state, tab) {
     if (!pathPrompt) return;
     tab.filePath = pathPrompt.trim();
     tab.title = tab.filePath.split("/").pop();
+
+    const editor = editorInstances.get(tab.id);
+    if (editor && tab.type !== "markdown") {
+      const model = editor.getModel();
+      if (model) {
+        monaco.editor.setModelLanguage(model, getMonacoLanguage(tab.filePath));
+      }
+    }
   }
 
   try {
@@ -390,6 +335,11 @@ export async function saveTabContent(state, tab) {
             statusEl.textContent = "";
           }
         }, 2000);
+      }
+      const titlePathEl = container.querySelector(".wb-bar-path");
+      if (titlePathEl && tab.filePath) {
+        titlePathEl.textContent = getWorkspaceRelativePath(state, tab.filePath);
+        titlePathEl.title = tab.filePath;
       }
     }
     state.renderTabs();

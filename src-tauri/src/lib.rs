@@ -109,6 +109,7 @@ pub fn run() {
             commands::git_stash,
             commands::git_stash_pop,
             commands::git_get_sync_status,
+            commands::git_show_file,
             commands::upload_image,
             commands::get_image_preview,
             commands::get_system_status,

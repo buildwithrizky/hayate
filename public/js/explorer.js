@@ -331,6 +331,7 @@ export async function buildTreeNode(state, item, level) {
 
 export function openFileInWorkbench(state, filePath, revealLine = null) {
   if (!filePath) return;
+  const isImg = /\.(png|jpe?g|gif|webp|svg|ico|bmp)$/i.test(filePath);
   const isMd = /\.md$/i.test(filePath);
   const fileName = filePath.split(/[/\\]+/).filter(Boolean).pop() || filePath;
 
@@ -343,7 +344,7 @@ export function openFileInWorkbench(state, filePath, revealLine = null) {
     return;
   }
 
-  const type = isMd ? "markdown" : "editor";
+  const type = isImg ? "image" : (isMd ? "markdown" : "editor");
   state.createTab(null, type, {
     title: fileName,
     filePath
@@ -391,7 +392,17 @@ export async function previewFile(state, filePath) {
   codeEl.textContent = "Loading...";
   modal.style.display = "flex";
 
+  const isImg = /\.(png|jpe?g|gif|webp|svg|ico|bmp)$/i.test(filePath);
   try {
+    if (isImg) {
+      const [dataUrl, data] = await Promise.all([
+        tauriInvoke("get_image_preview", { path: filePath }),
+        tauriInvoke("get_file_content", { path: filePath }).catch(() => null)
+      ]);
+      sizeEl.textContent = formatFileSize(data?.size || 0);
+      codeEl.innerHTML = `<img src="${dataUrl}" alt="${escapeHtml(fileName)}" style="max-width: 100%; max-height: 400px; object-fit: contain; display: block; margin: auto;" />`;
+      return;
+    }
     const data = await tauriInvoke("get_file_content", { path: filePath });
     sizeEl.textContent = formatFileSize(data.size || 0);
     codeEl.textContent = data.content || "(Empty file)";

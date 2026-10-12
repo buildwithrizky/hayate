@@ -1,5 +1,6 @@
 import { sendWs } from "./api.js";
 import { escapeHtml } from "./state.js";
+import { showConfirmDialog } from "./dialog.js";
 
 export function createTab(state, workspace, type = "terminal", initOptions = {}) {
   const targetWs = workspace || state.workspaces.find((w) => w.id === state.activeWorkspaceId) || state.workspaces[0];
@@ -18,6 +19,8 @@ export function createTab(state, workspace, type = "terminal", initOptions = {})
     defaultTitle = initOptions.filePath ? initOptions.filePath.split("/").pop() : "Untitled";
   } else if (type === "diff") {
     defaultTitle = initOptions.title || "Diff";
+  } else if (type === "image") {
+    defaultTitle = initOptions.filePath ? initOptions.filePath.split("/").pop() : "Image";
   }
 
   let title = (initOptions.title || defaultTitle).replace(/^[⇄\s]+/, "");
@@ -77,6 +80,9 @@ export function createTab(state, workspace, type = "terminal", initOptions = {})
   } else if (tab.type === "diff") {
     state.mountDiffInstance(tab);
     switchTab(state, id);
+  } else if (tab.type === "image") {
+    state.mountImageInstance(tab);
+    switchTab(state, id);
   }
   return tab;
 }
@@ -116,8 +122,17 @@ export function switchTab(state, tabId = null) {
   state.viewContainers.forEach((container, vId) => {
     if (tabId && vId === tabId) {
       container.classList.remove("hidden");
-      const textarea = container.querySelector(".wb-textarea");
-      if (textarea) textarea.focus();
+      const editorInstance = state.getEditorInstance?.(vId);
+      const diffEditorInstance = state.getDiffEditorInstance?.(vId);
+      if (editorInstance) {
+        editorInstance.layout();
+        editorInstance.focus();
+      } else if (diffEditorInstance) {
+        diffEditorInstance.layout();
+      } else {
+        const textarea = container.querySelector(".wb-textarea");
+        if (textarea) textarea.focus();
+      }
     } else {
       container.classList.add("hidden");
     }
@@ -130,12 +145,17 @@ export function switchTab(state, tabId = null) {
   state.reloadRightSidebar();
 }
 
-export function closeTab(state, tabId) {
+export async function closeTab(state, tabId) {
   const tab = state.tabs.find((t) => t.id === tabId);
   if (!tab) return;
 
   if (tab.isDirty) {
-    const confirmClose = confirm(`Tab "${tab.title}" has unsaved changes. Close anyway?`);
+    const confirmClose = await showConfirmDialog({
+      title: "Unsaved Changes",
+      message: `Tab "${tab.title}" has unsaved changes. Close anyway?`,
+      confirmLabel: "Close Anyway",
+      isDanger: true
+    });
     if (!confirmClose) return;
   }
 
@@ -158,6 +178,13 @@ export function closeTab(state, tabId) {
       state.terminalSessions.delete(tabId);
     }
   } else {
+    if (tab.type === "editor" || tab.type === "markdown") {
+      state.disposeEditorInstance?.(tabId);
+    } else if (tab.type === "diff") {
+      state.disposeDiffInstance?.(tabId);
+    } else if (tab.type === "image") {
+      state.disposeImageInstance?.(tabId);
+    }
     const viewEl = state.viewContainers.get(tabId);
     if (viewEl) {
       viewEl.remove();
@@ -274,6 +301,8 @@ export function renderTabs(state) {
       typeBadge = `<svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>`;
     } else if (tab.type === "diff") {
       typeBadge = `<svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="m21 3-7 7"/><path d="M8 21H3v-5"/><path d="m3 21 7-7"/></svg>`;
+    } else if (tab.type === "image") {
+      typeBadge = `<svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>`;
     }
 
     const dirtyBadge = tab.isDirty ? `<span class="tab-dirty-dot" title="Unsaved changes">&#x25cf;</span>` : "";
@@ -383,6 +412,11 @@ export function renderStatusBadge(state) {
     badge.style.color = tab.isDirty ? "var(--accent-amber)" : "var(--text-muted)";
   } else if (tab && tab.type === "diff") {
     badge.textContent = "DIFF";
+    badge.style.background = "rgba(0, 210, 255, 0.15)";
+    badge.style.borderColor = "rgba(0, 210, 255, 0.4)";
+    badge.style.color = "var(--accent-cyan)";
+  } else if (tab && tab.type === "image") {
+    badge.textContent = "IMAGE";
     badge.style.background = "rgba(0, 210, 255, 0.15)";
     badge.style.borderColor = "rgba(0, 210, 255, 0.4)";
     badge.style.color = "var(--accent-cyan)";

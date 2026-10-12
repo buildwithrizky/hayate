@@ -194,9 +194,13 @@ window.addEventListener("DOMContentLoaded", () => {
     const key = e.key;
     const lowerKey = key.toLowerCase();
     const isMod = e.ctrlKey || e.metaKey;
+    const isMonaco = Boolean(e.target?.closest?.(".monaco-editor"));
 
-    // F1 - F12 keys (except F2 for rename)
+    // F1 - F12 keys (except F2 for rename; Monaco handles F1 for Command Palette)
     if (/^f([1-9]|1[0-2])$/i.test(key)) {
+      if (key === "F1" && isMonaco) {
+        return;
+      }
       if (key !== "F2") {
         e.preventDefault();
         e.stopPropagation();
@@ -211,7 +215,8 @@ window.addEventListener("DOMContentLoaded", () => {
         target.isContentEditable ||
         target.tagName === "INPUT" ||
         target.tagName === "TEXTAREA" ||
-        target.closest?.(".xterm")
+        target.closest?.(".xterm") ||
+        isMonaco
       );
       if (!isEditable) {
         e.preventDefault();
@@ -220,14 +225,15 @@ window.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // Alt + Left / Right navigation outside editable elements / terminal
+    // Alt + Left / Right navigation outside editable elements / terminal / monaco
     if (e.altKey && !isMod && (key === "ArrowLeft" || key === "ArrowRight")) {
       const target = e.target;
       const isEditable = target && (
         target.isContentEditable ||
         target.tagName === "INPUT" ||
         target.tagName === "TEXTAREA" ||
-        target.closest?.(".xterm")
+        target.closest?.(".xterm") ||
+        isMonaco
       );
       if (!isEditable) {
         e.preventDefault();
@@ -237,6 +243,30 @@ window.addEventListener("DOMContentLoaded", () => {
     }
 
     if (!isMod) return;
+
+    // Save shortcut: Cmd/Ctrl + S (Monaco or container focus)
+    if (!e.shiftKey && !e.altKey && lowerKey === "s") {
+      e.preventDefault();
+      e.stopPropagation();
+      if (app.activeTabId) {
+        const activeTab = app.tabs.find((t) => t.id === app.activeTabId);
+        if (activeTab && (activeTab.type === "editor" || activeTab.type === "markdown")) {
+          app.saveTabContent(activeTab);
+        }
+      }
+      return;
+    }
+
+    // Monaco Command Palette shortcut: Cmd/Ctrl + Shift + P
+    if (e.shiftKey && !e.altKey && lowerKey === "p" && isMonaco) {
+      e.preventDefault();
+      e.stopPropagation();
+      const editor = app.getEditorInstance?.(app.activeTabId);
+      if (editor) {
+        editor.trigger("workbench", "editor.action.quickCommand");
+      }
+      return;
+    }
 
     // Explorer viewlet shortcut: Cmd/Ctrl + Shift + E
     if (e.shiftKey && !e.altKey && lowerKey === "e") {
@@ -338,6 +368,11 @@ window.addEventListener("DOMContentLoaded", () => {
     if (e.shiftKey && (lowerKey === "i" || lowerKey === "j" || lowerKey === "c" || lowerKey === "r")) {
       e.preventDefault();
       e.stopPropagation();
+      return;
+    }
+
+    // In Monaco, let editor handle internal shortcuts (e.g. Cmd+D, Cmd+F, Cmd+H, Cmd+/, Cmd+[, Cmd+], Cmd+G)
+    if (isMonaco) {
       return;
     }
 

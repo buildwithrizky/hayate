@@ -282,6 +282,11 @@ pub async fn git_get_sync_status(repo_path: String) -> Result<SyncStatus, String
     parse_sync_status(&raw)
 }
 
+#[tauri::command]
+pub async fn git_show_file(repo_path: String, spec: String) -> Result<String, String> {
+    git_ops::git_show_file(&repo_path, &spec).await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

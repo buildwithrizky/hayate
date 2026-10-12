@@ -151,21 +151,76 @@ impl PtyManager {
         // Background reader thread
         std::thread::spawn(move || {
             let mut buf = [0u8; 16384];
+            let mut leftover = Vec::with_capacity(4);
             loop {
                 match reader.read(&mut buf) {
-                    Ok(0) => break,
+                    Ok(0) => {
+                        if !leftover.is_empty() {
+                            let text = String::from_utf8_lossy(&leftover).into_owned();
+                            let _ = bcast.send(PtyWsMessage::Output {
+                                session_id: sid.clone(),
+                                text,
+                            });
+                        }
+                        break;
+                    }
                     Ok(n) => {
-                        let text = String::from_utf8_lossy(&buf[..n]).to_string();
-                        let _ = bcast.send(PtyWsMessage::Output {
-                            session_id: sid.clone(),
-                            text,
-                        });
+                        let combined = if leftover.is_empty() {
+                            buf[..n].to_vec()
+                        } else {
+                            leftover.extend_from_slice(&buf[..n]);
+                            std::mem::take(&mut leftover)
+                        };
+
+                        let (valid_text, rem_len) = match std::str::from_utf8(&combined) {
+                            Ok(s) => (s.to_string(), 0),
+                            Err(e) => {
+                                let valid_up_to = e.valid_up_to();
+                                if let Some(err_len) = e.error_len() {
+                                    // ponytail: invalid byte sequence decoded lossy; upgrade: full streaming decoder state machine
+                                    let mut s =
+                                        String::from_utf8_lossy(&combined[..valid_up_to + err_len])
+                                            .into_owned();
+                                    let rest = &combined[valid_up_to + err_len..];
+                                    if !rest.is_empty() {
+                                        s.push_str(&String::from_utf8_lossy(rest));
+                                    }
+                                    (s, 0)
+                                } else {
+                                    let s = std::str::from_utf8(&combined[..valid_up_to])
+                                        .unwrap_or("")
+                                        .to_string();
+                                    (s, combined.len() - valid_up_to)
+                                }
+                            }
+                        };
+
+                        if !valid_text.is_empty() {
+                            let _ = bcast.send(PtyWsMessage::Output {
+                                session_id: sid.clone(),
+                                text: valid_text,
+                            });
+                        }
+
+                        if rem_len > 0 {
+                            leftover.extend_from_slice(&combined[combined.len() - rem_len..]);
+                        }
+
                         // Yield thread if buffer full to prevent CPU starvation on heavy stream
                         if n == buf.len() {
                             std::thread::yield_now();
                         }
                     }
-                    Err(_) => break,
+                    Err(_) => {
+                        if !leftover.is_empty() {
+                            let text = String::from_utf8_lossy(&leftover).into_owned();
+                            let _ = bcast.send(PtyWsMessage::Output {
+                                session_id: sid.clone(),
+                                text,
+                            });
+                        }
+                        break;
+                    }
                 }
             }
 

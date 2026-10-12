@@ -92,7 +92,7 @@ export function mountTerminalInstance(state, tab) {
     fontFamily: "'JetBrains Mono', 'Menlo', 'Monaco', monospace",
     fontSize: 13,
     lineHeight: 1.25,
-    convertEol: true,
+    convertEol: false,
     allowTransparency: true,
     macOptionIsMeta: true
   });

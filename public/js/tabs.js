@@ -1,6 +1,5 @@
 import { sendWs } from "./api.js";
 import { escapeHtml } from "./state.js";
-import { renderOpenEditors } from "./explorer-open-editors.js";
 
 export function createTab(state, workspace, type = "terminal", initOptions = {}) {
   const targetWs = workspace || state.workspaces.find((w) => w.id === state.activeWorkspaceId) || state.workspaces[0];
@@ -258,8 +257,6 @@ export function renderTabs(state) {
   if (emptyNotice) {
     emptyNotice.style.display = currentTabs.length === 0 ? "var(--display-flex)" : "var(--display-none)";
   }
-
-  renderOpenEditors(state);
 
   currentTabs.forEach((tab) => {
     const pill = document.createElement("div");

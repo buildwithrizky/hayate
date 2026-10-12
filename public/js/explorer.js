@@ -5,7 +5,6 @@ import { getFileIcon } from "./explorer-icons.js";
 import { setupDragAndDrop, setupTreeBackgroundDrop } from "./explorer-dnd.js";
 import { ExplorerNav } from "./explorer-nav.js";
 import { fetchDirectoryItems, getCompactChain } from "./explorer-compact.js";
-import { renderOpenEditors } from "./explorer-open-editors.js";
 import { updateClipboardVisuals } from "./explorer-clipboard.js";
 import { applyFileNesting } from "./explorer-nesting.js";
 import { startInlineCreate } from "./explorer-inline.js";
@@ -140,8 +139,6 @@ export async function loadExplorer(state, forceRefresh = false) {
   const ws = state.getActiveWorkspace();
   const treeEl = document.getElementById("rs-files-tree");
   if (!treeEl) return;
-
-  renderOpenEditors(state);
 
   if (!explorerNavInstance || explorerNavInstance.treeEl !== treeEl) {
     explorerNavInstance = new ExplorerNav(treeEl, state);

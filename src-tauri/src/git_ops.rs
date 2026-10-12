@@ -1,6 +1,6 @@
+use crate::process_utils::silent_command;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
-use tokio::process::Command;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GitFileChange {
@@ -52,7 +52,7 @@ fn extended_path() -> String {
 }
 
 pub async fn git_status(repo_path: &str) -> Result<GitStatusResult, String> {
-    let output = Command::new("git")
+    let output = silent_command("git")
         .args(["status", "--porcelain=v1", "--ignored=traditional", "-b"])
         .current_dir(repo_path)
         .env("PATH", extended_path())
@@ -147,7 +147,7 @@ pub async fn git_diff(
     staged_only: bool,
     commit_hash: Option<&str>,
 ) -> Result<String, String> {
-    let mut cmd = Command::new("git");
+    let mut cmd = silent_command("git");
     cmd.current_dir(repo_path).env("PATH", extended_path());
 
     if let Some(commit) = commit_hash {
@@ -168,7 +168,7 @@ pub async fn git_diff(
 
     if !output.status.success() && !staged_only && commit_hash.is_none() {
         // Fallback for repo with no commits yet (HEAD not found)
-        let mut fallback = Command::new("git");
+        let mut fallback = silent_command("git");
         fallback
             .current_dir(repo_path)
             .env("PATH", extended_path())
@@ -185,7 +185,7 @@ pub async fn git_diff(
 
 pub async fn git_commit(repo_path: &str, message: &str, stage_all: bool) -> Result<String, String> {
     if stage_all {
-        let add_out = Command::new("git")
+        let add_out = silent_command("git")
             .args(["add", "-A"])
             .current_dir(repo_path)
             .env("PATH", extended_path())
@@ -199,7 +199,7 @@ pub async fn git_commit(repo_path: &str, message: &str, stage_all: bool) -> Resu
         }
     }
 
-    let commit_out = Command::new("git")
+    let commit_out = silent_command("git")
         .args(["commit", "-m", message])
         .current_dir(repo_path)
         .env("PATH", extended_path())
@@ -220,7 +220,7 @@ pub async fn git_commit(repo_path: &str, message: &str, stage_all: bool) -> Resu
 }
 
 pub async fn git_log(repo_path: &str) -> Result<Vec<GitCommitItem>, String> {
-    let output = Command::new("git")
+    let output = silent_command("git")
         .args(["log", "-n", "25", "--pretty=format:%H|%h|%an|%ar|%s"])
         .current_dir(repo_path)
         .env("PATH", extended_path())
@@ -252,7 +252,7 @@ pub async fn git_log(repo_path: &str) -> Result<Vec<GitCommitItem>, String> {
 }
 
 pub async fn git_stage(repo_path: &str, file: Option<&str>, all: bool) -> Result<(), String> {
-    let mut cmd = Command::new("git");
+    let mut cmd = silent_command("git");
     cmd.current_dir(repo_path)
         .env("PATH", extended_path())
         .arg("add");
@@ -274,7 +274,7 @@ pub async fn git_stage(repo_path: &str, file: Option<&str>, all: bool) -> Result
 }
 
 pub async fn git_unstage(repo_path: &str, file: Option<&str>, all: bool) -> Result<(), String> {
-    let mut cmd = Command::new("git");
+    let mut cmd = silent_command("git");
     cmd.current_dir(repo_path)
         .env("PATH", extended_path())
         .args(["reset", "HEAD"]);
@@ -291,7 +291,7 @@ pub async fn git_unstage(repo_path: &str, file: Option<&str>, all: bool) -> Resu
 
     // Fallback if no initial commit
     if !out.status.success() {
-        let mut rm_cmd = Command::new("git");
+        let mut rm_cmd = silent_command("git");
         rm_cmd
             .current_dir(repo_path)
             .env("PATH", extended_path())
@@ -314,14 +314,14 @@ pub async fn git_unstage(repo_path: &str, file: Option<&str>, all: bool) -> Resu
 
 pub async fn git_discard(repo_path: &str, file: Option<&str>, all: bool) -> Result<(), String> {
     if all {
-        let _ = Command::new("git")
+        let _ = silent_command("git")
             .args(["restore", "--staged", "."])
             .current_dir(repo_path)
             .env("PATH", extended_path())
             .output()
             .await;
 
-        let res = Command::new("git")
+        let res = silent_command("git")
             .args(["restore", "--worktree", "."])
             .current_dir(repo_path)
             .env("PATH", extended_path())
@@ -331,7 +331,7 @@ pub async fn git_discard(repo_path: &str, file: Option<&str>, all: bool) -> Resu
         if let Ok(r) = res
             && !r.status.success()
         {
-            let _ = Command::new("git")
+            let _ = silent_command("git")
                 .args(["checkout", "--", "."])
                 .current_dir(repo_path)
                 .env("PATH", extended_path())
@@ -339,7 +339,7 @@ pub async fn git_discard(repo_path: &str, file: Option<&str>, all: bool) -> Resu
                 .await;
         }
 
-        let _ = Command::new("git")
+        let _ = silent_command("git")
             .args(["clean", "-fd"])
             .current_dir(repo_path)
             .env("PATH", extended_path())
@@ -353,7 +353,7 @@ pub async fn git_discard(repo_path: &str, file: Option<&str>, all: bool) -> Resu
     let path = Path::new(repo_path).join(file_str);
 
     // Clean untracked
-    let _ = Command::new("git")
+    let _ = silent_command("git")
         .args(["clean", "-fd", "--", file_str])
         .current_dir(repo_path)
         .env("PATH", extended_path())
@@ -361,7 +361,7 @@ pub async fn git_discard(repo_path: &str, file: Option<&str>, all: bool) -> Resu
         .await;
 
     // Restore tracked changes
-    let res = Command::new("git")
+    let res = silent_command("git")
         .args(["restore", "--staged", "--worktree", "--", file_str])
         .current_dir(repo_path)
         .env("PATH", extended_path())
@@ -371,7 +371,7 @@ pub async fn git_discard(repo_path: &str, file: Option<&str>, all: bool) -> Resu
     if let Ok(r) = res
         && !r.status.success()
     {
-        let _ = Command::new("git")
+        let _ = silent_command("git")
             .args(["checkout", "--", file_str])
             .current_dir(repo_path)
             .env("PATH", extended_path())
@@ -381,7 +381,7 @@ pub async fn git_discard(repo_path: &str, file: Option<&str>, all: bool) -> Resu
 
     // Untracked physical deletion fallback
     if path.exists() {
-        let check = Command::new("git")
+        let check = silent_command("git")
             .args(["ls-files", "--error-unmatch", "--", file_str])
             .current_dir(repo_path)
             .env("PATH", extended_path())

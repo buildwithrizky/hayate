@@ -251,7 +251,7 @@ pub async fn delete_path(path: String) -> Result<(), String> {
                 .replace('\\', "\\\\")
                 .replace('"', "\\\"")
         );
-        let status = tokio::process::Command::new("osascript")
+        let status = crate::process_utils::silent_command("osascript")
             .arg("-e")
             .arg(&script)
             .status()
@@ -262,7 +262,7 @@ pub async fn delete_path(path: String) -> Result<(), String> {
     }
     #[cfg(all(unix, not(target_os = "macos")))]
     {
-        let status = tokio::process::Command::new("gio")
+        let status = crate::process_utils::silent_command("gio")
             .arg("trash")
             .arg(p)
             .status()
@@ -282,7 +282,7 @@ pub async fn delete_path(path: String) -> Result<(), String> {
             },
             p.to_string_lossy().replace('"', "`\"")
         );
-        let status = tokio::process::Command::new("powershell")
+        let status = crate::process_utils::silent_command("powershell")
             .arg("-NoProfile")
             .arg("-NonInteractive")
             .arg("-Command")
@@ -315,7 +315,7 @@ pub async fn reveal_in_finder(path: String) -> Result<(), String> {
     }
     #[cfg(target_os = "macos")]
     {
-        tokio::process::Command::new("open")
+        crate::process_utils::silent_command("open")
             .arg("-R")
             .arg(p)
             .status()
@@ -325,7 +325,7 @@ pub async fn reveal_in_finder(path: String) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
         let clean_path = crate::workspace::strip_unc_prefix(p).replace('/', "\\");
-        tokio::process::Command::new("explorer")
+        crate::process_utils::silent_command("explorer")
             .arg(format!("/select,{clean_path}"))
             .status()
             .await
@@ -341,7 +341,7 @@ pub async fn reveal_in_finder(path: String) -> Result<(), String> {
                 .map(|parent| parent.to_string_lossy().to_string())
                 .unwrap_or_else(|| p.to_string())
         };
-        tokio::process::Command::new("xdg-open")
+        crate::process_utils::silent_command("xdg-open")
             .arg(target)
             .status()
             .await

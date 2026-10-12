@@ -6,6 +6,7 @@ use tauri_plugin_updater::UpdaterExt;
 pub mod commands;
 pub mod fs_watcher;
 pub mod git_ops;
+pub mod process_utils;
 pub mod pty_mgr;
 pub mod workspace;
 

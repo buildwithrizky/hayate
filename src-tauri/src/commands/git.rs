@@ -1,6 +1,6 @@
+use crate::process_utils::silent_command;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use tokio::process::Command;
 
 use crate::git_ops;
 
@@ -43,7 +43,7 @@ async fn run_git_cmd(repo_path: &str, args: &[&str]) -> Result<String, String> {
         return Err("repo_path required".to_string());
     }
 
-    let output = Command::new("git")
+    let output = silent_command("git")
         .args(args)
         .current_dir(repo_path)
         .env("PATH", extended_path())

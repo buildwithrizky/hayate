@@ -108,6 +108,8 @@ impl PtyManager {
 
         cmd.env("TERM", "xterm-256color");
         cmd.env("PATH", extra_paths);
+        cmd.env("LANG", "en_US.UTF-8");
+        cmd.env("LC_ALL", "en_US.UTF-8");
         if !home.is_empty() {
             cmd.env("HOME", &home);
         }
@@ -172,38 +174,44 @@ impl PtyManager {
                             std::mem::take(&mut leftover)
                         };
 
-                        let (valid_text, rem_len) = match std::str::from_utf8(&combined) {
-                            Ok(s) => (s.to_string(), 0),
-                            Err(e) => {
-                                let valid_up_to = e.valid_up_to();
-                                if let Some(err_len) = e.error_len() {
-                                    // ponytail: invalid byte sequence decoded lossy; upgrade: full streaming decoder state machine
-                                    let mut s =
-                                        String::from_utf8_lossy(&combined[..valid_up_to + err_len])
-                                            .into_owned();
-                                    let rest = &combined[valid_up_to + err_len..];
-                                    if !rest.is_empty() {
-                                        s.push_str(&String::from_utf8_lossy(rest));
+                        let mut slice = &combined[..];
+                        let mut output = String::new();
+
+                        while !slice.is_empty() {
+                            match std::str::from_utf8(slice) {
+                                Ok(s) => {
+                                    output.push_str(s);
+                                    slice = &[];
+                                }
+                                Err(e) => {
+                                    let valid = e.valid_up_to();
+                                    if valid > 0 {
+                                        if let Ok(s) = std::str::from_utf8(&slice[..valid]) {
+                                            output.push_str(s);
+                                        }
+                                        slice = &slice[valid..];
                                     }
-                                    (s, 0)
-                                } else {
-                                    let s = std::str::from_utf8(&combined[..valid_up_to])
-                                        .unwrap_or("")
-                                        .to_string();
-                                    (s, combined.len() - valid_up_to)
+
+                                    match e.error_len() {
+                                        Some(err_len) => {
+                                            output.push('\u{FFFD}');
+                                            slice = &slice[err_len..];
+                                        }
+                                        None => {
+                                            // Incomplete multi-byte sequence at chunk boundary: keep in leftover
+                                            leftover.extend_from_slice(slice);
+                                            slice = &[];
+                                        }
+                                    }
                                 }
                             }
-                        };
-
-                        if !valid_text.is_empty() {
-                            let _ = bcast.send(PtyWsMessage::Output {
-                                session_id: sid.clone(),
-                                text: valid_text,
-                            });
                         }
 
-                        if rem_len > 0 {
-                            leftover.extend_from_slice(&combined[combined.len() - rem_len..]);
+                        if !output.is_empty() {
+                            let _ = bcast.send(PtyWsMessage::Output {
+                                session_id: sid.clone(),
+                                text: output,
+                            });
                         }
 
                         // Yield thread if buffer full to prevent CPU starvation on heavy stream

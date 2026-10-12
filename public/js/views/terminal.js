@@ -89,7 +89,7 @@ export function mountTerminalInstance(state, tab) {
   const term = new TerminalClass({
     theme: TERM_THEME,
     cursorBlink: false,
-    fontFamily: "'JetBrains Mono', 'Menlo', 'Monaco', monospace",
+    fontFamily: "'JetBrains Mono', 'Menlo', 'Monaco', 'Cascadia Code', 'Fira Code', 'Symbols Nerd Font Mono', monospace",
     fontSize: 13,
     lineHeight: 1.25,
     convertEol: false,

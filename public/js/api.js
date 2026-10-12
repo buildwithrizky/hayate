@@ -154,5 +154,7 @@ export const searchInFiles = (params) => tauriInvoke("search_in_files", {
   includePattern: params.includePattern ?? params.include_pattern ?? null,
   maxResults: params.maxResults ?? params.max_results ?? 2000
 });
+export const listWorkspaceFiles = (rootPath, maxFiles = 10000) =>
+  tauriInvoke("list_workspace_files", { rootPath, maxFiles });
 
 

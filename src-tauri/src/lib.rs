@@ -123,6 +123,7 @@ pub fn run() {
             commands::delete_path,
             commands::reveal_in_finder,
             commands::search_in_files,
+            commands::list_workspace_files,
         ])
         .run(tauri::generate_context!())
         .expect("error while building tauri application");

@@ -221,7 +221,9 @@
   --width-sidebar-right-min: 240px;
   --width-sidebar-right-max: 800px;
   --width-modal: 780px;
+  --width-quick-open: 600px;
   --height-modal: 560px;
+  --height-quick-open-max: 420px;
   --width-dialog: 360px;
   --width-dropdown-min: 170px;
   --width-tab-max: 200px;

@@ -1,6 +1,7 @@
 import { openBranchPicker } from "./git/branch-picker.js";
 import { syncGitChanges, showGitMoreMenu } from "./git/actions-menu.js";
 import { getSearchController } from "./search.js";
+import { initQuickOpen, openQuickOpen } from "./quick_open.js";
 import { StateManager } from "./state.js";
 import { setupSidebarResizers } from "./layout.js";
 import { initContextMenuEvents, showExplorerContextMenu } from "./explorer-menu.js";
@@ -287,6 +288,14 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     }
 
+    // Quick Open shortcut: Cmd/Ctrl + P
+    if (!e.shiftKey && !e.altKey && lowerKey === "p") {
+      e.preventDefault();
+      e.stopPropagation();
+      openQuickOpen(app);
+      return;
+    }
+
     // Sidebar shortcuts: Cmd/Ctrl + B (left), Cmd/Ctrl + L (right)
     if (!e.shiftKey && !e.altKey) {
       if (lowerKey === "b") {
@@ -349,6 +358,7 @@ window.addEventListener("DOMContentLoaded", () => {
   app.initFsWatcher();
   app.loadWorkspaces();
   getSearchController(app);
+  initQuickOpen(app);
 
   // Flush active terminal buffer on visibility restore
   document.addEventListener("visibilitychange", () => {

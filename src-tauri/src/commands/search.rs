@@ -265,6 +265,39 @@ pub async fn search_in_files(
     .map_err(|e| format!("Task execution error: {e}"))?
 }
 
+#[tauri::command]
+pub async fn list_workspace_files(
+    root_path: String,
+    max_files: Option<usize>,
+) -> Result<Vec<String>, String> {
+    let root = PathBuf::from(&root_path);
+    if !root.exists() || !root.is_dir() {
+        return Err(format!("Root directory does not exist: {}", root_path));
+    }
+
+    let limit = max_files.unwrap_or(10_000);
+
+    tokio::task::spawn_blocking(move || {
+        let mut file_list = Vec::new();
+        collect_search_files(&root, &mut file_list)?;
+
+        // ponytail: sort relative paths lexicographically; upgrade to gitignore crate if user ignores needed
+        let mut rel_paths: Vec<String> = file_list
+            .into_iter()
+            .take(limit)
+            .map(|p| match p.strip_prefix(&root) {
+                Ok(rel) => rel.to_string_lossy().replace('\\', "/"),
+                Err(_) => p.to_string_lossy().replace('\\', "/"),
+            })
+            .collect();
+
+        rel_paths.sort();
+        Ok(rel_paths)
+    })
+    .await
+    .map_err(|e| format!("Task execution error: {e}"))?
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -294,5 +327,19 @@ mod tests {
         let re = glob_to_regex("*.rs").unwrap();
         assert!(matches_include("src/main.rs", Some(&re)));
         assert!(!matches_include("src/main.js", Some(&re)));
+    }
+
+    #[tokio::test]
+    async fn test_list_workspace_files_invalid_path() {
+        let res = list_workspace_files("non_existent_dir_12345".to_string(), None).await;
+        assert!(res.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_list_workspace_files_current_dir() {
+        let res = list_workspace_files(".".to_string(), Some(10)).await;
+        assert!(res.is_ok());
+        let files = res.unwrap();
+        assert!(!files.is_empty());
     }
 }

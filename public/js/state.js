@@ -319,8 +319,8 @@ export class StateManager {
     return buildTreeNode(this, item, level);
   }
 
-  openFileInWorkbench(filePath) {
-    return openFileInWorkbench(this, filePath);
+  openFileInWorkbench(filePath, revealLine = null) {
+    return openFileInWorkbench(this, filePath, revealLine);
   }
 
   previewFile(filePath) {

@@ -275,7 +275,7 @@
   align-items: var(--align-center);
   gap: var(--gap-sm);
   flex-wrap: var(--flex-nowrap);
-  padding: var(--space-xs) var(--space-sm);
+  padding: var(--space-xs) var(--space-md);
   border-radius: var(--radius-sm);
   cursor: var(--cursor-pointer);
   font-family: var(--font-mono);
@@ -333,9 +333,9 @@
 .rs-git-tree-children {
   display: var(--display-flex);
   flex-direction: var(--flex-col);
-  margin-left: var(--space-lg);
+  margin-left: var(--space-tree-indent);
   border-left: var(--border-default-subtle);
-  padding-left: var(--space-2xs);
+  padding-left: var(--size-0);
 }
 
 .rs-git-item {

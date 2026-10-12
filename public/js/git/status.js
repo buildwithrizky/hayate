@@ -221,7 +221,6 @@ export function renderGitTreeNode(state, node, sectionKey, level, isStaged, repo
   if (node.isDir) {
     const isCollapsed = state.gitTreeCollapsed.has(itemPathKey);
     row.className = `rs-git-tree-row rs-git-folder-item ${isCollapsed ? "collapsed" : ""}`;
-    row.style.paddingLeft = `${level * 14 + 6}px`;
 
     row.innerHTML = `
       <span class="rs-git-chevron"><svg class="rs-chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
@@ -264,7 +263,6 @@ export function renderGitTreeNode(state, node, sectionKey, level, isStaged, repo
     });
   } else {
     row.className = `rs-git-tree-row rs-git-file-item git-${escapeHtml(code)}`;
-    row.style.paddingLeft = `${level * 14 + 6}px`;
 
     const openIconSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
     const openBtnHtml = `<button class="rs-git-action-btn btn-open-file" title="Open File">${openIconSvg}</button>`;

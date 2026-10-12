@@ -276,9 +276,14 @@
 .rs-tree-children {
   display: var(--display-flex);
   flex-direction: var(--flex-col);
-  margin-left: var(--space-lg);
+  margin-left: var(--space-tree-indent);
   border-left: var(--border-default-subtle);
-  padding-left: var(--space-2xs);
+  padding-left: var(--size-0);
+}
+
+.rs-tree-empty {
+  padding: var(--space-xs) var(--space-md);
+  text-align: var(--text-align-left);
 }
 
 /* Git Ignored Files & Folders */

@@ -194,7 +194,6 @@ export async function buildTreeNode(state, item, level) {
 
   const row = document.createElement("div");
   row.className = `rs-file-item ${effectiveItem.isDirectory ? "is-dir" : "is-file"}`;
-  row.style.paddingLeft = `${level * 14 + 6}px`;
   row.setAttribute("data-path", effectiveItem.path);
   row.setAttribute("data-isdir", effectiveItem.isDirectory ? "true" : "false");
 
@@ -291,14 +290,14 @@ export async function buildTreeNode(state, item, level) {
         if (iconContainer) {
           iconContainer.outerHTML = getFileIcon(effectiveItem.name, true, true);
         }
-        childrenContainer.innerHTML = `<div class="rs-empty" style="padding:4px ${level * 14 + 20}px; text-align:left;">Loading...</div>`;
+        childrenContainer.innerHTML = '<div class="rs-empty rs-tree-empty">Loading...</div>';
         childrenContainer.style.display = "flex";
 
         const rawSub = await fetchDirectoryItems(state, effectiveItem.path);
         const subItems = applyFileNesting(rawSub);
         childrenContainer.innerHTML = "";
         if (subItems.length === 0) {
-          childrenContainer.innerHTML = `<div class="rs-empty" style="padding:4px ${level * 14 + 20}px; text-align:left;">(empty)</div>`;
+          childrenContainer.innerHTML = '<div class="rs-empty rs-tree-empty">(empty)</div>';
         } else {
           for (const sub of subItems) {
             const subNode = await buildTreeNode(state, sub, level + 1);

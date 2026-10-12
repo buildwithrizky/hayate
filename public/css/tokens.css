@@ -100,6 +100,7 @@
   --space-2xl: 14px;
   --space-3xl: 24px;
   --space-4xl: 32px;
+  --space-tree-indent: 15px;
 
   /* Gap Scale (Standardized hierarchy) */
   --gap-2xs: var(--space-2xs); /* 2px - tight inline badge/tags */

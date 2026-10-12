@@ -37,15 +37,63 @@
 .rs-commit-opt {
   display: var(--display-inline-flex);
   align-items: var(--align-center);
-  gap: var(--gap-sm);
-  font-size: var(--font-size-sm);
+  gap: var(--space-xs);
+  font-size: var(--font-size-xs);
   color: var(--text-muted);
   cursor: var(--cursor-pointer);
+  user-select: var(--user-select-none);
+  padding: var(--space-3xs) var(--space-2xs);
+  border-radius: var(--radius-sm);
+  transition: var(--transition-color-fast);
 }
 
-.rs-commit-opt input {
+.rs-commit-opt:hover {
+  color: var(--text-pure);
+}
+
+.rs-commit-opt input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: var(--size-icon-xs);
+  height: var(--size-icon-xs);
+  background: var(--bg-subtle);
+  border: var(--border-default-strong);
+  border-radius: var(--radius-xs);
+  cursor: var(--cursor-pointer);
+  display: var(--display-inline-flex);
+  align-items: var(--align-center);
+  justify-content: var(--justify-center);
+  position: var(--pos-relative);
   margin: var(--size-0);
-  accent-color: var(--text-muted);
+  transition: var(--transition-all-fast);
+  flex-shrink: var(--flex-shrink-0);
+}
+
+.rs-commit-opt input[type="checkbox"]:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-focus);
+}
+
+.rs-commit-opt input[type="checkbox"]:focus {
+  outline: var(--outline-none);
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-focus-ring);
+}
+
+.rs-commit-opt input[type="checkbox"]:checked {
+  background: var(--bg-active);
+  border-color: var(--border-focus);
+}
+
+.rs-commit-opt input[type="checkbox"]:checked::after {
+  content: "";
+  position: var(--pos-absolute);
+  width: var(--space-xs);
+  height: var(--space-sm);
+  border-right: var(--border-width-medium) var(--border-style-solid) var(--text-pure);
+  border-bottom: var(--border-width-medium) var(--border-style-solid) var(--text-pure);
+  transform: rotate(45deg);
+  margin-top: var(--offset-neg-2px);
 }
 
 /* Git Groups */

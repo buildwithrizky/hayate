@@ -267,10 +267,8 @@ pub async fn delete_path(path: String) -> Result<(), String> {
             .arg(p)
             .status()
             .await;
-        if let Ok(st) = status {
-            if st.success() {
-                return Ok(());
-            }
+        if status.is_ok_and(|st| st.success()) {
+            return Ok(());
         }
     }
     #[cfg(target_os = "windows")]
@@ -291,10 +289,8 @@ pub async fn delete_path(path: String) -> Result<(), String> {
             .arg(&script)
             .status()
             .await;
-        if let Ok(st) = status {
-            if st.success() {
-                return Ok(());
-            }
+        if status.is_ok_and(|st| st.success()) {
+            return Ok(());
         }
     }
 

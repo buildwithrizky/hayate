@@ -60,12 +60,15 @@ export function fitTerminal(state, sessionId) {
     const cols = session.term.cols;
     const rows = session.term.rows;
     if (cols > 0 && rows > 0) {
-      sendWs({
-        action: "resize",
-        sessionId,
-        cols,
-        rows
-      });
+      clearTimeout(session.resizeTimer);
+      session.resizeTimer = setTimeout(() => {
+        sendWs({
+          action: "resize",
+          sessionId,
+          cols,
+          rows
+        });
+      }, 100);
     }
   } catch {}
 }
@@ -85,7 +88,7 @@ export function mountTerminalInstance(state, tab) {
 
   const term = new TerminalClass({
     theme: TERM_THEME,
-    cursorBlink: true,
+    cursorBlink: false,
     fontFamily: "'JetBrains Mono', 'Menlo', 'Monaco', monospace",
     fontSize: 13,
     lineHeight: 1.25,

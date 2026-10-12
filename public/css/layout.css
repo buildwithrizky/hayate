@@ -9,9 +9,7 @@
 /* Header - Sleek floating glass surface ala Sokudo */
 .app-header {
   height: var(--size-app-header-h);
-  background: var(--glass-bg-header);
-  backdrop-filter: var(--backdrop-header);
-  -webkit-backdrop-filter: var(--backdrop-header);
+  background: var(--bg-panel);
   border-bottom: var(--border-default-subtle);
   display: var(--display-flex);
   align-items: var(--align-center);
@@ -67,11 +65,6 @@
   border: var(--border-default-subtle);
   padding: var(--space-2xs) var(--space-md);
   border-radius: var(--radius-pill);
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: var(--opacity-full); }
-  50% { opacity: var(--opacity-disabled); }
 }
 
 /* Split Area */

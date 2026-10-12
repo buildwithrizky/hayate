@@ -327,7 +327,6 @@
   display: var(--display-flex);
   flex-direction: var(--flex-col);
   gap: var(--space-3xs);
-  backdrop-filter: var(--glass-blur);
   user-select: var(--user-select-none);
 }
 

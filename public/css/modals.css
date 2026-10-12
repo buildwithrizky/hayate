@@ -12,8 +12,6 @@
   position: var(--pos-absolute);
   inset: var(--coord-0);
   background: var(--modal-backdrop);
-  backdrop-filter: var(--backdrop-modal);
-  -webkit-backdrop-filter: var(--backdrop-modal);
 }
 
 .rs-modal-window {

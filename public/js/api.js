@@ -40,7 +40,14 @@ export function handleBackendMessage(state, msg) {
   const tab = state.tabs.find((t) => t.id === msg.sessionId);
 
   if (msg.type === "output") {
-    session?.term?.write(msg.text);
+    const isTabActive = state.activeTabId === msg.sessionId && !document.hidden;
+    if (!isTabActive) {
+      if (session) {
+        session.buffer = (session.buffer || "") + msg.text;
+      }
+    } else {
+      session?.term?.write(msg.text);
+    }
   } else if (msg.type === "spawned") {
     if (tab) {
       tab.running = true;
@@ -90,8 +97,13 @@ export function spawnBackendShell(state, sessionId, repoPath) {
 export function initFsWatcher(state) {
   let debounceTimer = null;
   let lastFocusTime = 0;
+  let pendingFsRefresh = false;
 
   const triggerRefresh = () => {
+    if (document.hidden) {
+      pendingFsRefresh = true;
+      return;
+    }
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(async () => {
       if (!state.getActiveWorkspace()) return;
@@ -104,6 +116,13 @@ export function initFsWatcher(state) {
       }
     }, 200);
   };
+
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && pendingFsRefresh) {
+      pendingFsRefresh = false;
+      triggerRefresh();
+    }
+  });
 
   tauriListen("workspace-fs-changed", () => {
     triggerRefresh();

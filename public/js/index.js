@@ -264,4 +264,15 @@ window.addEventListener("DOMContentLoaded", () => {
   app.initPty();
   app.initFsWatcher();
   app.loadWorkspaces();
+
+  // Flush active terminal buffer on visibility restore
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && app.activeTabId) {
+      const session = app.terminalSessions.get(app.activeTabId);
+      if (session && session.buffer) {
+        session.term.write(session.buffer);
+        session.buffer = "";
+      }
+    }
+  });
 });

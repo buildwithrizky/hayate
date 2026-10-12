@@ -91,6 +91,10 @@ export function switchTab(state, tabId = null) {
   state.terminalSessions.forEach((session, sId) => {
     if (tabId && sId === tabId) {
       session.container.classList.remove("hidden");
+      if (session.buffer) {
+        session.term.write(session.buffer);
+        session.buffer = "";
+      }
       if (typeof requestAnimationFrame === "function") {
         requestAnimationFrame(() => {
           state.fitTerminal(sId);
@@ -141,6 +145,7 @@ export function closeTab(state, tabId) {
     sendWs({ action: "kill", sessionId: tabId });
     const session = state.terminalSessions.get(tabId);
     if (session) {
+      clearTimeout(session.resizeTimer);
       if (session.windowPasteHandler) {
         window.removeEventListener("paste", session.windowPasteHandler, { capture: true });
       }

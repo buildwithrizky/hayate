@@ -27,13 +27,13 @@
   background: var(--bg-subtle);
   border: var(--border-default-subtle);
   border-radius: var(--radius-pill);
-  padding: var(--space-xs) var(--space-lg);
+  padding: var(--space-sm) var(--space-xl);
   transition: var(--transition-all-normal);
 }
 
 .rs-search-input-box:focus-within {
-  border-color: var(--border-strong);
-  box-shadow: var(--shadow-sm);
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-focus-ring);
 }
 
 .rs-search-input {
@@ -45,6 +45,7 @@
   font-size: var(--font-size-sm);
   outline: var(--outline-none);
   min-width: var(--size-0);
+  padding: var(--space-2xs) var(--size-0);
 }
 
 .rs-search-input::placeholder {
@@ -225,15 +226,17 @@
   background: var(--bg-subtle);
   border: var(--border-default-subtle);
   border-radius: var(--radius-pill);
-  padding: var(--space-xs) var(--space-lg);
+  padding: var(--space-sm) var(--space-xl);
   font-family: var(--font-sans);
   font-size: var(--font-size-xs);
   color: var(--text-pure);
   outline: var(--outline-none);
+  transition: var(--transition-all-normal);
 }
 
 .rs-tree-filter-input:focus {
-  border-color: var(--border-strong);
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-focus-ring);
 }
 
 .rs-tree-filter-close {

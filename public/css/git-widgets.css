@@ -49,14 +49,16 @@
   background: var(--bg-subtle);
   border: var(--border-default-subtle);
   border-radius: var(--radius-pill);
-  padding: var(--space-xs) var(--space-lg);
+  padding: var(--space-sm) var(--space-xl);
   font-size: var(--font-size-xs);
   color: var(--text-pure);
   outline: var(--outline-none);
+  transition: var(--transition-all-normal);
 }
 
 .rs-branch-search-input:focus {
-  border-color: var(--border-strong);
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-focus-ring);
 }
 
 .rs-branch-actions-row {

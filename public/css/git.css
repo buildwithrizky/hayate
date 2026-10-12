@@ -13,16 +13,18 @@
   color: var(--text-main);
   font-family: var(--font-sans);
   font-size: var(--font-size-sm);
-  padding: var(--space-sm) var(--space-md);
+  padding: var(--space-md) var(--space-xl);
+  line-height: var(--line-height-prose);
   resize: var(--resize-vertical);
   min-height: var(--size-commit-input-min-h);
   box-sizing: var(--box-sizing-border);
+  transition: var(--transition-bg-border);
 }
 
 .rs-commit-input:focus {
   outline: var(--outline-none);
   border-color: var(--border-focus);
-  box-shadow: var(--shadow-focus-glow);
+  box-shadow: var(--shadow-focus-ring);
 }
 
 .rs-commit-actions {

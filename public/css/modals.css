@@ -142,17 +142,18 @@
   background: var(--bg-app);
   border: var(--border-default-strong);
   color: var(--text-main);
-  padding: var(--space-sm) var(--space-md);
+  padding: var(--space-sm) var(--space-xl);
   font-size: var(--font-size-sm);
   font-family: var(--font-mono);
   border-radius: var(--radius-input);
   outline: var(--outline-none);
   box-sizing: var(--box-sizing-border);
+  transition: var(--transition-all-normal);
 }
 
 .rs-dialog-input:focus {
-  border-color: var(--accent-blue);
-  box-shadow: var(--shadow-focus-blue);
+  border-color: var(--border-focus);
+  box-shadow: var(--shadow-focus-ring);
 }
 
 .rs-dialog-actions {

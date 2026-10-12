@@ -98,6 +98,9 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   // Git Header actions
+  document.getElementById("rs-git-header-commit")?.addEventListener("click", () => {
+    app.commitChanges();
+  });
   document.getElementById("rs-git-branch")?.addEventListener("click", () => {
     openBranchPicker(app);
   });

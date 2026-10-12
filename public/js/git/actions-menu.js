@@ -3,27 +3,27 @@ import { showMessageDialog } from "../dialog.js";
 
 export async function updateSyncIndicator(state) {
   const ws = state.getActiveWorkspace();
+  const syncBtn = document.getElementById("rs-git-sync");
   const labelEl = document.getElementById("rs-git-sync-count");
-  if (!labelEl) return;
 
   if (!ws) {
-    labelEl.textContent = "";
-    labelEl.classList.add("is-hidden");
+    if (labelEl) labelEl.textContent = "Sync";
+    syncBtn?.classList.add("is-hidden");
     return;
   }
 
   try {
     const status = await tauriInvoke("git_get_sync_status", { repoPath: ws.path });
     if (status && (status.ahead > 0 || status.behind > 0)) {
-      labelEl.textContent = `↓${status.behind} ↑${status.ahead}`;
-      labelEl.classList.remove("is-hidden");
+      if (labelEl) labelEl.textContent = `Sync (${status.behind}↓ ${status.ahead}↑)`;
+      syncBtn?.classList.remove("is-hidden");
     } else {
-      labelEl.textContent = "";
-      labelEl.classList.add("is-hidden");
+      if (labelEl) labelEl.textContent = "Sync";
+      syncBtn?.classList.add("is-hidden");
     }
   } catch {
-    labelEl.textContent = "";
-    labelEl.classList.add("is-hidden");
+    if (labelEl) labelEl.textContent = "Sync";
+    syncBtn?.classList.add("is-hidden");
   }
 }
 
@@ -61,6 +61,8 @@ export function showGitMoreMenu(state, anchorEl) {
   menuEl.className = "rs-git-menu";
 
   const items = [
+    { label: "Sync Changes", action: () => syncGitChanges(state) },
+    { divider: true },
     { label: "Fetch", action: () => executeGitAction(state, "git_fetch", "Fetch") },
     { label: "Pull", action: () => executeGitAction(state, "git_pull", "Pull") },
     { label: "Push", action: () => executeGitAction(state, "git_push", "Push") },

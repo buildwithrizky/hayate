@@ -287,9 +287,10 @@
               </button>
             </div>
             <div class="rs-panel-actions">
-              <button id="rs-git-sync" class="btn btn-icon btn-xs rs-git-sync-btn" title="Synchronize Changes">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-                <span id="rs-git-sync-count" class="rs-git-sync-label is-hidden"></span>
+              <button id="rs-git-header-commit" class="btn btn-icon btn-xs" title="Commit (Ctrl+Enter)">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
               </button>
               <button id="rs-git-refresh" class="btn btn-icon btn-xs" title="Refresh git status">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -322,6 +323,10 @@
               <div class="rs-commit-btn-group">
                 <button id="rs-commit-btn" class="btn btn-xs rs-commit-btn-main">Commit</button>
                 <button id="rs-commit-push-btn" class="btn btn-xs rs-commit-btn-sub" title="Commit & Push">Commit & Push</button>
+                <button id="rs-git-sync" class="btn btn-xs rs-commit-btn-sub is-hidden" title="Synchronize Changes">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                  <span id="rs-git-sync-count">Sync</span>
+                </button>
               </div>
             </div>
           </div>

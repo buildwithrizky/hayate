@@ -8,17 +8,11 @@
 }
 
 .rs-file-item.selected {
-  background: var(--accent-blue-subtle);
   color: var(--text-pure);
 }
 
-.rs-files-list:focus-within .rs-file-item.selected {
-  background: var(--accent-blue-select);
-}
-
 .rs-file-item.focused {
-  outline: var(--border-width-thin) var(--border-style-solid) var(--accent-blue);
-  outline-offset: var(--offset-neg-thin);
+  outline: none;
 }
 
 /* Inline Rename & Create Input */

@@ -1,6 +1,9 @@
-// In-app modal dialog replacing window.prompt and window.confirm for Tauri/WKWebView
+// In-app modal dialog replacing window.prompt, window.confirm, and window.alert for Tauri/WKWebView
 
-export function showPromptDialog({ title = "Enter value", message = "", defaultValue = "", confirmLabel = "Confirm", cancelLabel = "Cancel" } = {}) {
+export function showPromptDialog(options = {}) {
+  const opts = typeof options === "string" ? { title: options, message: arguments[1] || "" } : options;
+  const { title = "Enter value", message = "", defaultValue = "", confirmLabel = "Confirm", cancelLabel = "Cancel" } = opts;
+
   return new Promise((resolve) => {
     const modal = document.createElement("div");
     modal.className = "rs-modal";
@@ -89,7 +92,10 @@ export function showPromptDialog({ title = "Enter value", message = "", defaultV
   });
 }
 
-export function showConfirmDialog({ title = "Confirm", message = "Are you sure?", confirmLabel = "Confirm", cancelLabel = "Cancel", isDanger = false } = {}) {
+export function showConfirmDialog(options = {}) {
+  const opts = typeof options === "string" ? { message: options } : options;
+  const { title = "Confirm", message = "Are you sure?", confirmLabel = "Confirm", cancelLabel = "Cancel", isDanger = false } = opts;
+
   return new Promise((resolve) => {
     const modal = document.createElement("div");
     modal.className = "rs-modal";
@@ -159,5 +165,74 @@ export function showConfirmDialog({ title = "Confirm", message = "Are you sure?"
     overlay.addEventListener("click", () => cleanup(false));
 
     confirmBtn.focus();
+  });
+}
+
+export function showMessageDialog(title = "Message", message = "") {
+  let dialogTitle = title;
+  let dialogMessage = message;
+  if (typeof title === "object") {
+    dialogTitle = title.title || "Message";
+    dialogMessage = title.message || "";
+  }
+
+  return new Promise((resolve) => {
+    const modal = document.createElement("div");
+    modal.className = "rs-modal";
+
+    const overlay = document.createElement("div");
+    overlay.className = "rs-modal-overlay";
+
+    const win = document.createElement("div");
+    win.className = "rs-dialog-window";
+
+    if (dialogTitle) {
+      const titleEl = document.createElement("div");
+      titleEl.className = "rs-dialog-title";
+      titleEl.textContent = dialogTitle;
+      win.appendChild(titleEl);
+    }
+
+    if (dialogMessage) {
+      const msgEl = document.createElement("div");
+      msgEl.className = "rs-dialog-message";
+      msgEl.textContent = dialogMessage;
+      win.appendChild(msgEl);
+    }
+
+    const actions = document.createElement("div");
+    actions.className = "rs-dialog-actions";
+
+    const okBtn = document.createElement("button");
+    okBtn.type = "button";
+    okBtn.className = "btn btn-xs btn-primary";
+    okBtn.textContent = "OK";
+
+    actions.appendChild(okBtn);
+    win.appendChild(actions);
+
+    modal.appendChild(overlay);
+    modal.appendChild(win);
+    document.body.appendChild(modal);
+
+    const cleanup = () => {
+      window.removeEventListener("keydown", onKeyDown, true);
+      modal.remove();
+      resolve();
+    };
+
+    const onKeyDown = (e) => {
+      if (e.key === "Escape" || e.key === "Enter") {
+        e.preventDefault();
+        e.stopPropagation();
+        cleanup();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown, true);
+    okBtn.addEventListener("click", cleanup);
+    overlay.addEventListener("click", cleanup);
+
+    okBtn.focus();
   });
 }

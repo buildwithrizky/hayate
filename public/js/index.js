@@ -1,3 +1,5 @@
+import { openBranchPicker } from "./git/branch-picker.js";
+import { syncGitChanges, showGitMoreMenu } from "./git/actions-menu.js";
 import { getSearchController } from "./search.js";
 import { StateManager } from "./state.js";
 import { setupSidebarResizers } from "./layout.js";
@@ -93,6 +95,20 @@ window.addEventListener("DOMContentLoaded", () => {
   });
   document.getElementById("rs-git-refresh")?.addEventListener("click", () => {
     app.loadGitStatus();
+  });
+
+  // Git Header actions
+  document.getElementById("rs-git-branch")?.addEventListener("click", () => {
+    openBranchPicker(app);
+  });
+  document.getElementById("rs-git-sync")?.addEventListener("click", () => {
+    syncGitChanges(app);
+  });
+  document.getElementById("rs-git-more")?.addEventListener("click", (e) => {
+    showGitMoreMenu(app, e.currentTarget);
+  });
+  document.getElementById("rs-commit-push-btn")?.addEventListener("click", () => {
+    app.commitChanges(true);
   });
 
   // Git Commit actions

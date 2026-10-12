@@ -110,7 +110,7 @@ export async function previewDiff(state, repoPath, file, staged) {
   }
 }
 
-export async function commitChanges(state) {
+export async function commitChanges(state, andPush = false) {
   const ws = state.getActiveWorkspace();
   if (!ws) {
     alert("Select a workspace first");
@@ -127,7 +127,9 @@ export async function commitChanges(state) {
 
   const stageAllOption = stageCheck ? stageCheck.checked : true;
   const btn = document.getElementById("rs-commit-btn");
+  const pushBtn = document.getElementById("rs-commit-push-btn");
   if (btn) btn.disabled = true;
+  if (pushBtn) pushBtn.disabled = true;
 
   try {
     await tauriInvoke("git_commit", {
@@ -136,10 +138,17 @@ export async function commitChanges(state) {
       stageAll: stageAllOption
     });
     if (input) input.value = "";
-    state.loadGitStatus();
+    if (andPush) {
+      await tauriInvoke("git_push", { repoPath: ws.path });
+    }
+    await state.loadGitStatus();
+    if (state.activeRightPanel === "explorer") {
+      state.loadExplorer(true);
+    }
   } catch (err) {
-    alert("Commit error: " + String(err));
+    alert((andPush ? "Commit & Push error: " : "Commit error: ") + String(err));
   } finally {
     if (btn) btn.disabled = false;
+    if (pushBtn) pushBtn.disabled = false;
   }
 }

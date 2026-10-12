@@ -1,3 +1,7 @@
+import { stageFile as opStageFile, stageAll as opStageAll, unstageFile as opUnstageFile, unstageAll as opUnstageAll, discardFile as opDiscardFile, discardAll as opDiscardAll } from "./operations.js";
+import { getFileIcon } from "../explorer-icons.js";
+import { openFileInWorkbench } from "../explorer.js";
+import { updateSyncIndicator } from "./actions-menu.js";
 import { tauriInvoke } from "../api.js";
 import { escapeHtml } from "../state.js";
 import { fetchDirectoryItems } from "../explorer.js";
@@ -53,10 +57,14 @@ export async function loadGitStatus(state, options = {}) {
   try {
     const data = await tauriInvoke("get_git_status", { path: ws.path });
     state.gitStatusData = data;
-    if (branchEl) {
+    const branchNameEl = document.getElementById("rs-git-branch-name");
+    if (branchNameEl) {
+      branchNameEl.textContent = data.branch || "HEAD";
+    } else if (branchEl) {
       branchEl.textContent = data.branch || "HEAD";
-      if (data.upstream) branchEl.title = `Upstream: ${data.upstream}`;
     }
+    if (branchEl && data.upstream) branchEl.title = `Upstream: ${data.upstream}`;
+    updateSyncIndicator(state);
 
     const staged = data.staged || [];
     const unstaged = data.unstaged || [];
@@ -217,7 +225,7 @@ export function renderGitTreeNode(state, node, sectionKey, level, isStaged, repo
 
     row.innerHTML = `
       <span class="rs-git-chevron"><svg class="rs-chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
-      <span class="rs-git-icon">${isCollapsed ? "&#128193;" : "&#128194;"}</span>
+      <span class="rs-git-icon">${getFileIcon(node.name, true, !isCollapsed)}</span>
       <span class="rs-git-name" title="${escapeHtml(node.fullPath)}">${escapeHtml(node.name)}</span>
       <span class="rs-git-badge ${escapeHtml(code)}">${escapeHtml(code)}</span>
     `;
@@ -245,12 +253,12 @@ export function renderGitTreeNode(state, node, sectionKey, level, isStaged, repo
       if (collapsed) {
         state.gitTreeCollapsed.delete(itemPathKey);
         row.classList.remove("collapsed");
-        if (ic) ic.innerHTML = "&#128194;";
+        if (ic) ic.innerHTML = getFileIcon(node.name, true, true);
         childrenEl.style.display = "block";
       } else {
         state.gitTreeCollapsed.add(itemPathKey);
         row.classList.add("collapsed");
-        if (ic) ic.innerHTML = "&#128193;";
+        if (ic) ic.innerHTML = getFileIcon(node.name, true, false);
         childrenEl.style.display = "none";
       }
     });
@@ -258,11 +266,18 @@ export function renderGitTreeNode(state, node, sectionKey, level, isStaged, repo
     row.className = `rs-git-tree-row rs-git-file-item git-${escapeHtml(code)}`;
     row.style.paddingLeft = `${level * 14 + 6}px`;
 
+    const openIconSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
+    const openBtnHtml = `<button class="rs-git-action-btn btn-open-file" title="Open File">${openIconSvg}</button>`;
+
     let actionsHtml = "";
     if (isStaged) {
-      actionsHtml = `<button class="rs-git-action-btn btn-unstage-file" title="Unstage Changes ( - )">&minus;</button>`;
+      actionsHtml = `
+        ${openBtnHtml}
+        <button class="rs-git-action-btn btn-unstage-file" title="Unstage Changes ( - )">&minus;</button>
+      `;
     } else {
       actionsHtml = `
+        ${openBtnHtml}
         <button class="rs-git-action-btn btn-discard-file" title="Discard Changes ( ⟲ )">&#x27f2;</button>
         <button class="rs-git-action-btn btn-stage-file" title="Stage Changes ( + )">&plus;</button>
       `;
@@ -270,13 +285,23 @@ export function renderGitTreeNode(state, node, sectionKey, level, isStaged, repo
 
     row.innerHTML = `
       <span class="rs-git-chevron rs-chevron-spacer"></span>
-      <span class="rs-git-icon">&#128196;</span>
+      <span class="rs-git-icon">${getFileIcon(node.name, false)}</span>
       <span class="rs-git-name" title="${escapeHtml(node.fullPath)}">${escapeHtml(node.name)}</span>
       <span class="rs-git-actions">${actionsHtml}</span>
       <span class="rs-git-badge ${escapeHtml(code)}">${escapeHtml(code)}</span>
     `;
 
     // Action button click handlers (stop propagation to row click)
+    const openFileBtn = row.querySelector(".btn-open-file");
+    if (openFileBtn) {
+      openFileBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const ws = state.getActiveWorkspace();
+        const fullPath = ws ? `${ws.path}/${node.fullPath}` : node.fullPath;
+        openFileInWorkbench(state, fullPath);
+      });
+    }
+
     const stageBtn = row.querySelector(".btn-stage-file");
     if (stageBtn) {
       stageBtn.addEventListener("click", (e) => {
@@ -410,97 +435,25 @@ export async function refreshGitAndExplorer(state, options = {}) {
 }
 
 export async function stageFile(state, file) {
-  const ws = state.getActiveWorkspace();
-  if (!ws || !file) return;
-  try {
-    await tauriInvoke("git_stage", {
-      path: ws.path,
-      file,
-      all: false
-    });
-    await refreshGitAndExplorer(state, { fetchCommits: false });
-  } catch (err) {
-    alert("Stage error: " + String(err));
-  }
+  return opStageFile(state, file, () => refreshGitAndExplorer(state, { fetchCommits: false }));
 }
 
 export async function stageAll(state) {
-  const ws = state.getActiveWorkspace();
-  if (!ws) return;
-  try {
-    await tauriInvoke("git_stage", {
-      path: ws.path,
-      file: null,
-      all: true
-    });
-    await refreshGitAndExplorer(state, { fetchCommits: false });
-  } catch (err) {
-    alert("Stage all error: " + String(err));
-  }
+  return opStageAll(state, () => refreshGitAndExplorer(state, { fetchCommits: false }));
 }
 
 export async function unstageFile(state, file) {
-  const ws = state.getActiveWorkspace();
-  if (!ws || !file) return;
-  try {
-    await tauriInvoke("git_unstage", {
-      path: ws.path,
-      file,
-      all: false
-    });
-    await refreshGitAndExplorer(state, { fetchCommits: false });
-  } catch (err) {
-    alert("Unstage error: " + String(err));
-  }
+  return opUnstageFile(state, file, () => refreshGitAndExplorer(state, { fetchCommits: false }));
 }
 
 export async function unstageAll(state) {
-  const ws = state.getActiveWorkspace();
-  if (!ws) return;
-  try {
-    await tauriInvoke("git_unstage", {
-      path: ws.path,
-      file: null,
-      all: true
-    });
-    await refreshGitAndExplorer(state, { fetchCommits: false });
-  } catch (err) {
-    alert("Unstage all error: " + String(err));
-  }
+  return opUnstageAll(state, () => refreshGitAndExplorer(state, { fetchCommits: false }));
 }
 
 export async function discardFile(state, file) {
-  const ws = state.getActiveWorkspace();
-  if (!ws || !file) return;
-  const ok = confirm(`Are you sure you want to discard changes in '${file}'? This cannot be undone.`);
-  if (!ok) return;
-
-  try {
-    await tauriInvoke("git_discard", {
-      path: ws.path,
-      file,
-      all: false
-    });
-    await refreshGitAndExplorer(state, { fetchCommits: false });
-  } catch (err) {
-    alert("Discard error: " + String(err));
-  }
+  return opDiscardFile(state, file, () => refreshGitAndExplorer(state, { fetchCommits: false }));
 }
 
 export async function discardAll(state) {
-  const ws = state.getActiveWorkspace();
-  if (!ws) return;
-  const ok = confirm("Are you sure you want to discard all changes in working tree? This cannot be undone.");
-  if (!ok) return;
-
-  try {
-    await tauriInvoke("git_discard", {
-      path: ws.path,
-      file: null,
-      all: true
-    });
-    await refreshGitAndExplorer(state, { fetchCommits: false });
-  } catch (err) {
-    alert("Discard all error: " + String(err));
-  }
+  return opDiscardAll(state, () => refreshGitAndExplorer(state, { fetchCommits: false }));
 }

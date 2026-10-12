@@ -310,3 +310,84 @@
   text-overflow: var(--text-overflow-ellipsis);
   white-space: var(--whitespace-nowrap);
 }
+
+/* Branch Pill Button */
+.rs-branch-btn {
+  display: var(--display-inline-flex);
+  align-items: var(--align-center);
+  gap: var(--space-xs);
+  background: var(--bg-active);
+  border: var(--border-default-strong);
+  color: var(--text-pure);
+  padding: var(--space-3xs) var(--space-sm);
+  border-radius: var(--radius-pill);
+  cursor: var(--cursor-pointer);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  transition: var(--transition-all-normal);
+}
+
+.rs-branch-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-focus);
+}
+
+.rs-branch-btn svg {
+  flex-shrink: var(--flex-shrink-0);
+  color: var(--text-dim);
+}
+
+/* Sync Button & Indicator */
+.rs-git-sync-btn {
+  position: var(--pos-relative);
+}
+
+.rs-git-sync-btn.is-spinning svg {
+  animation: rs-git-spin var(--duration-spin, 1s) linear infinite;
+}
+
+@keyframes rs-git-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.rs-git-sync-label {
+  font-size: var(--font-size-2xs);
+  font-family: var(--font-mono);
+  color: var(--text-pure);
+  background: var(--bg-active);
+  border: var(--border-default-strong);
+  border-radius: var(--radius-pill);
+  padding: var(--space-3xs) var(--space-xs);
+  margin-left: var(--space-3xs);
+}
+
+/* Commit Button Group */
+.rs-commit-btn-group {
+  display: var(--display-inline-flex);
+  align-items: var(--align-center);
+  gap: var(--space-xs);
+}
+
+.rs-commit-btn-main {
+  background: var(--bg-active);
+  border: var(--border-default-strong);
+  color: var(--text-pure);
+}
+
+.rs-commit-btn-main:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-focus);
+}
+
+.rs-commit-btn-sub {
+  background: var(--bg-subtle);
+  border: var(--border-default-subtle);
+  color: var(--text-muted);
+}
+
+.rs-commit-btn-sub:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+  color: var(--text-main);
+}

@@ -404,8 +404,8 @@ export class StateManager {
     return previewDiff(this, repoPath, file, staged);
   }
 
-  commitChanges() {
-    return commitChanges(this);
+  commitChanges(andPush = false) {
+    return commitChanges(this, andPush);
   }
 
   openDiffTab(file, isStaged, statusCode = "M", commitHash = null) {

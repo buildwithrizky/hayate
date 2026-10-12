@@ -1,5 +1,6 @@
 import { sendWs } from "./api.js";
 import { escapeHtml } from "./state.js";
+import { renderOpenEditors } from "./explorer-open-editors.js";
 
 export function createTab(state, workspace, type = "terminal", initOptions = {}) {
   const targetWs = workspace || state.workspaces.find((w) => w.id === state.activeWorkspaceId) || state.workspaces[0];
@@ -31,6 +32,8 @@ export function createTab(state, workspace, type = "terminal", initOptions = {})
     repoPath,
     running: false,
     pid: null,
+    // Terminal custom working directory
+    cwd: initOptions.cwd || null,
     // Metadata for non-terminal views
     url: initOptions.url || "http://localhost:3000",
     filePath: initOptions.filePath || null,
@@ -53,8 +56,9 @@ export function createTab(state, workspace, type = "terminal", initOptions = {})
   if (tab.type === "terminal") {
     state.mountTerminalInstance(tab);
     switchTab(state, id);
-    if (repoPath) {
-      state.spawnBackendShell(tab.id, repoPath);
+    const initialCwd = tab.cwd || repoPath;
+    if (initialCwd) {
+      state.spawnBackendShell(tab.id, initialCwd);
     }
   } else if (tab.type === "browser") {
     state.mountBrowserInstance(tab);
@@ -193,7 +197,7 @@ export function restartActiveTab(state) {
     if (session) {
       session.term.reset();
       session.term.writeln("\x1b[33m\r\n[Reconnecting shell session...]\x1b[0m\r\n");
-      state.spawnBackendShell(tab.id, tab.repoPath);
+      state.spawnBackendShell(tab.id, tab.cwd || tab.repoPath);
     }
   } else if (tab.type === "browser") {
     const container = state.viewContainers.get(tab.id);
@@ -254,6 +258,8 @@ export function renderTabs(state) {
   if (emptyNotice) {
     emptyNotice.style.display = currentTabs.length === 0 ? "var(--display-flex)" : "var(--display-none)";
   }
+
+  renderOpenEditors(state);
 
   currentTabs.forEach((tab) => {
     const pill = document.createElement("div");
@@ -396,7 +402,7 @@ export function renderCwd(state) {
   if (!label) return;
   const tab = state.tabs.find((t) => t.id === state.activeTabId);
   const ws = state.workspaces.find((w) => w.id === state.activeWorkspaceId);
-  const p = tab?.repoPath || ws?.path || "No workspace";
+  const p = tab?.cwd || tab?.repoPath || ws?.path || "No workspace";
   label.textContent = p;
   label.title = p;
 }

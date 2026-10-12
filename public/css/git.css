@@ -199,7 +199,7 @@
 }
 
 .rs-commit-hash {
-  color: var(--accent-cyan);
+  color: var(--text-dim);
   font-weight: var(--font-weight-semibold);
 }
 

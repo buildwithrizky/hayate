@@ -163,6 +163,76 @@ pub async fn rename_path(old_path: String, new_path: String) -> Result<(), Strin
 }
 
 #[tauri::command]
+pub async fn move_path(src_path: String, dst_path: String) -> Result<(), String> {
+    let src = Path::new(src_path.trim());
+    let dst = Path::new(dst_path.trim());
+    if src.as_os_str().is_empty() || dst.as_os_str().is_empty() {
+        return Err("src_path and dst_path required".to_string());
+    }
+    if !src.exists() {
+        return Err(format!("Source path does not exist: {}", src.display()));
+    }
+    if let Some(parent) = dst.parent().filter(|p| !p.as_os_str().is_empty()) {
+        tokio::fs::create_dir_all(parent)
+            .await
+            .map_err(|e| format!("Failed to create destination parent: {e}"))?;
+    }
+    tokio::fs::rename(src, dst)
+        .await
+        .map_err(|e| format!("Failed to move: {e}"))?;
+    Ok(())
+}
+
+fn copy_dir_all_sync(src: &Path, dst: &Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(dst)?;
+    for entry in std::fs::read_dir(src)? {
+        let entry = entry?;
+        let file_type = entry.file_type()?;
+        let target = dst.join(entry.file_name());
+        if file_type.is_dir() {
+            copy_dir_all_sync(&entry.path(), &target)?;
+        } else {
+            std::fs::copy(entry.path(), target)?;
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn copy_path(src_path: String, dst_path: String) -> Result<(), String> {
+    let src = Path::new(src_path.trim()).to_path_buf();
+    let dst = Path::new(dst_path.trim()).to_path_buf();
+    if src.as_os_str().is_empty() || dst.as_os_str().is_empty() {
+        return Err("src_path and dst_path required".to_string());
+    }
+    if !src.exists() {
+        return Err(format!("Source path does not exist: {}", src.display()));
+    }
+    if let Some(parent) = dst.parent().filter(|p| !p.as_os_str().is_empty()) {
+        tokio::fs::create_dir_all(parent)
+            .await
+            .map_err(|e| format!("Failed to create destination parent: {e}"))?;
+    }
+
+    let is_dir = tokio::fs::metadata(&src)
+        .await
+        .map_err(|e| format!("Metadata error: {e}"))?
+        .is_dir();
+
+    if is_dir {
+        tokio::task::spawn_blocking(move || copy_dir_all_sync(&src, &dst))
+            .await
+            .map_err(|e| format!("Task spawn error: {e}"))?
+            .map_err(|e| format!("Failed to copy directory: {e}"))?;
+    } else {
+        tokio::fs::copy(&src, &dst)
+            .await
+            .map_err(|e| format!("Failed to copy file: {e}"))?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn delete_path(path: String) -> Result<(), String> {
     let p = Path::new(path.trim());
     if p.as_os_str().is_empty() {
@@ -171,6 +241,64 @@ pub async fn delete_path(path: String) -> Result<(), String> {
     let metadata = tokio::fs::metadata(p)
         .await
         .map_err(|e| format!("Path not found: {e}"))?;
+
+    // Try OS trash first (Safe Delete)
+    #[cfg(target_os = "macos")]
+    {
+        let script = format!(
+            "tell application \"Finder\" to delete POSIX file \"{}\"",
+            p.to_string_lossy()
+                .replace('\\', "\\\\")
+                .replace('"', "\\\"")
+        );
+        let status = tokio::process::Command::new("osascript")
+            .arg("-e")
+            .arg(&script)
+            .status()
+            .await;
+        if status.is_ok_and(|st| st.success()) {
+            return Ok(());
+        }
+    }
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        let status = tokio::process::Command::new("gio")
+            .arg("trash")
+            .arg(p)
+            .status()
+            .await;
+        if let Ok(st) = status {
+            if st.success() {
+                return Ok(());
+            }
+        }
+    }
+    #[cfg(target_os = "windows")]
+    {
+        let script = format!(
+            "Add-Type -AssemblyName Microsoft.VisualBasic; [Microsoft.VisualBasic.FileIO.FileSystem]::Delete{}(\"{}\", [Microsoft.VisualBasic.FileIO.UIOption]::OnlyErrorDialogs, [Microsoft.VisualBasic.FileIO.RecycleOption]::SendToRecycleBin)",
+            if metadata.is_dir() {
+                "Directory"
+            } else {
+                "File"
+            },
+            p.to_string_lossy().replace('"', "`\"")
+        );
+        let status = tokio::process::Command::new("powershell")
+            .arg("-NoProfile")
+            .arg("-NonInteractive")
+            .arg("-Command")
+            .arg(&script)
+            .status()
+            .await;
+        if let Ok(st) = status {
+            if st.success() {
+                return Ok(());
+            }
+        }
+    }
+
+    // Fallback: permanent deletion if OS trash unavailable
     if metadata.is_dir() {
         tokio::fs::remove_dir_all(p)
             .await

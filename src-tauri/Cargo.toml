@@ -37,6 +37,7 @@ tauri-plugin-log = "2"
 tauri-plugin-updater = "2"
 tauri-plugin-window-state = "2"
 notify = "6"
+regex = "1"
 
 [profile.release]
 opt-level = 3

@@ -1,3 +1,4 @@
+import { getSearchController } from "./search.js";
 import { StateManager } from "./state.js";
 import { setupSidebarResizers } from "./layout.js";
 import { initContextMenuEvents, showExplorerContextMenu } from "./explorer-menu.js";
@@ -66,17 +67,29 @@ window.addEventListener("DOMContentLoaded", () => {
     app.toggleRightSidebar();
   });
 
-  // Switch between Explorer & Git tabs
+  // Switch between Explorer, Git & Search tabs
   document.getElementById("rs-tab-explorer")?.addEventListener("click", () => {
     app.switchRightPanel("explorer");
   });
   document.getElementById("rs-tab-git")?.addEventListener("click", () => {
     app.switchRightPanel("git");
   });
+  document.getElementById("rs-tab-search")?.addEventListener("click", () => {
+    app.switchRightPanel("search");
+  });
 
   // Refresh buttons
   document.getElementById("rs-explorer-refresh")?.addEventListener("click", () => {
     app.loadExplorer(true);
+  });
+  document.getElementById("rs-explorer-new-file")?.addEventListener("click", () => {
+    app.triggerExplorerNew(false);
+  });
+  document.getElementById("rs-explorer-new-folder")?.addEventListener("click", () => {
+    app.triggerExplorerNew(true);
+  });
+  document.getElementById("rs-explorer-collapse-all")?.addEventListener("click", () => {
+    app.collapseAllFolders();
   });
   document.getElementById("rs-git-refresh")?.addEventListener("click", () => {
     app.loadGitStatus();
@@ -162,10 +175,12 @@ window.addEventListener("DOMContentLoaded", () => {
     const lowerKey = key.toLowerCase();
     const isMod = e.ctrlKey || e.metaKey;
 
-    // F1 - F12 keys
+    // F1 - F12 keys (except F2 for rename)
     if (/^f([1-9]|1[0-2])$/i.test(key)) {
-      e.preventDefault();
-      e.stopPropagation();
+      if (key !== "F2") {
+        e.preventDefault();
+        e.stopPropagation();
+      }
       return;
     }
 
@@ -202,6 +217,56 @@ window.addEventListener("DOMContentLoaded", () => {
     }
 
     if (!isMod) return;
+
+    // Explorer viewlet shortcut: Cmd/Ctrl + Shift + E
+    if (e.shiftKey && !e.altKey && lowerKey === "e") {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!app.isRightSidebarOpen) {
+        app.toggleRightSidebar(true);
+      }
+      app.switchRightPanel("explorer");
+      return;
+    }
+
+    // Git viewlet shortcut: Cmd/Ctrl + Shift + G
+    if (e.shiftKey && !e.altKey && lowerKey === "g") {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!app.isRightSidebarOpen) {
+        app.toggleRightSidebar(true);
+      }
+      app.switchRightPanel("git");
+      return;
+    }
+
+    // Search in files global shortcut: Cmd/Ctrl + Shift + F
+    if (e.shiftKey && !e.altKey && lowerKey === "f") {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!app.isRightSidebarOpen) {
+        app.toggleRightSidebar(true);
+      }
+      app.switchRightPanel("search");
+      app.focusSearch();
+      return;
+    }
+
+    // Explorer tree filter shortcut: Cmd/Ctrl + F (when explorer active or target inside tree)
+    if (!e.shiftKey && !e.altKey && lowerKey === "f") {
+      const activePanel = app.activeRightPanel;
+      const isTreeFocused = Boolean(document.activeElement?.closest("#rs-panel-explorer"));
+      if (activePanel === "explorer" || isTreeFocused) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!app.isRightSidebarOpen) {
+          app.toggleRightSidebar(true);
+        }
+        app.switchRightPanel("explorer");
+        app.openTreeFilter();
+        return;
+      }
+    }
 
     // Sidebar shortcuts: Cmd/Ctrl + B (left), Cmd/Ctrl + L (right)
     if (!e.shiftKey && !e.altKey) {
@@ -264,6 +329,7 @@ window.addEventListener("DOMContentLoaded", () => {
   app.initPty();
   app.initFsWatcher();
   app.loadWorkspaces();
+  getSearchController(app);
 
   // Flush active terminal buffer on visibility restore
   document.addEventListener("visibilitychange", () => {

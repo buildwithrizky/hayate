@@ -14,7 +14,7 @@
   /* Borders & Glassmorphism */
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.16);
-  --border-focus: #0091ff;
+  --border-focus: var(--accent-blue);
 
   /* Text Scales */
   --text-main: #f5f5f7;
@@ -23,25 +23,25 @@
   --text-pure: #ffffff;
   --text-translucent: rgba(255, 255, 255, 0.6);
 
-  /* Accent & Glow - Sokudo Electric Blue */
-  --accent-blue: #0091ff;
-  --accent-blue-hover: #1a9eff;
-  --accent-blue-subtle: rgba(0, 145, 255, 0.06);
-  --accent-blue-muted: rgba(0, 145, 255, 0.15);
-  --accent-blue-badge: rgba(0, 145, 255, 0.16);
-  --accent-blue-select: rgba(0, 145, 255, 0.3);
-  --accent-blue-border: rgba(0, 145, 255, 0.32);
-  --accent-blue-border-strong: rgba(0, 145, 255, 0.35);
-  --accent-blue-glow: 0 0 16px rgba(0, 145, 255, 0.35);
-  --accent-blue-glow-sm: 0 0 8px rgba(0, 145, 255, 0.4);
-  --accent-blue-glow-drag: 0 0 8px rgba(0, 145, 255, 0.45);
-  --accent-blue-glow-btn: 0 0 12px rgba(0, 145, 255, 0.25);
-  --accent-logo-glow: drop-shadow(0 0 6px rgba(29, 109, 255, 0.45));
+  /* Accent & Glow - Sokudo Monochrome Brand (btn-primary matching) */
+  --accent-blue: #ffffff;
+  --accent-blue-hover: #e6e6e6;
+  --accent-blue-subtle: rgba(255, 255, 255, 0.05);
+  --accent-blue-muted: rgba(255, 255, 255, 0.12);
+  --accent-blue-badge: rgba(255, 255, 255, 0.14);
+  --accent-blue-select: rgba(255, 255, 255, 0.12);
+  --accent-blue-border: rgba(255, 255, 255, 0.25);
+  --accent-blue-border-strong: rgba(255, 255, 255, 0.4);
+  --accent-blue-glow: 0 0 12px rgba(255, 255, 255, 0.2);
+  --accent-blue-glow-sm: 0 0 6px rgba(255, 255, 255, 0.25);
+  --accent-blue-glow-drag: 0 0 6px rgba(255, 255, 255, 0.3);
+  --accent-blue-glow-btn: 0 0 8px rgba(255, 255, 255, 0.2);
+  --accent-logo-glow: drop-shadow(0 0 6px rgba(255, 255, 255, 0.3));
 
   /* Status Accents & Surfaces */
-  --accent-cyan: #00d2ff;
-  --accent-cyan-subtle: rgba(0, 210, 255, 0.15);
-  --accent-cyan-border: rgba(0, 210, 255, 0.3);
+  --accent-cyan: var(--text-pure);
+  --accent-cyan-subtle: rgba(255, 255, 255, 0.08);
+  --accent-cyan-border: rgba(255, 255, 255, 0.16);
 
   --accent-emerald: #10b981;
   --accent-emerald-subtle: rgba(16, 185, 129, 0.08);
@@ -223,6 +223,9 @@
   --width-preview-thumb-max: 220px;
   --height-preview-thumb-max: 160px;
   --height-commits-list-max: 220px;
+  --height-open-editors-max: 180px;
+  --offset-neg-thin: -1px;
+  --offset-neg-2px: -2px;
 
   /* Z-Index Hierarchy */
   --z-textarea: 2;

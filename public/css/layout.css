@@ -60,9 +60,9 @@
 .app-badge {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
-  color: var(--text-dim);
-  background: var(--overlay-white-xs);
-  border: var(--border-default-subtle);
+  color: var(--text-pure);
+  background: var(--bg-active);
+  border: var(--border-default-strong);
   padding: var(--space-2xs) var(--space-md);
   border-radius: var(--radius-pill);
 }

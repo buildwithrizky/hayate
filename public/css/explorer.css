@@ -67,20 +67,21 @@
 }
 
 .rs-nav-btn.active {
-  color: var(--text-main);
+  color: var(--text-pure);
   background: var(--bg-active);
-  border-color: var(--border-strong);
+  border: var(--border-default-strong);
   box-shadow: var(--shadow-sm);
 }
 
 .rs-badge {
   font-size: var(--font-size-2xs);
-  font-weight: var(--font-weight-bold);
-  padding: var(--space-3xs) var(--space-sm);
+  padding: var(--space-3xs) var(--space-xs);
   border-radius: var(--radius-pill);
-  background: var(--accent-blue-badge);
-  border: var(--border-blue);
-  color: var(--accent-cyan);
+  background: var(--bg-active);
+  border: var(--border-default-strong);
+  color: var(--text-pure);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-none);
 }
 
 /* Panels */
@@ -142,6 +143,32 @@
   white-space: var(--whitespace-nowrap);
   overflow: var(--overflow-hidden);
   text-overflow: var(--text-overflow-ellipsis);
+}
+
+.rs-panel-actions {
+  display: var(--display-flex);
+  align-items: var(--align-center);
+  gap: var(--space-3xs);
+}
+
+.rs-panel-actions .btn-icon {
+  width: var(--size-btn-icon);
+  height: var(--size-btn-icon);
+  padding: var(--size-0);
+  background: var(--bg-subtle);
+  border: var(--border-default-subtle);
+  color: var(--text-muted);
+  border-radius: var(--radius-pill);
+  display: var(--display-inline-flex);
+  align-items: var(--align-center);
+  justify-content: var(--justify-center);
+  transition: var(--transition-btn);
+}
+
+.rs-panel-actions .btn-icon:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+  color: var(--text-main);
 }
 
 .rs-panel-body {
@@ -228,7 +255,7 @@
   width: var(--size-icon-xs);
   text-align: var(--text-align-center);
   flex-shrink: var(--flex-shrink-0);
-  opacity: var(--opacity-high);
+  color: var(--text-dim);
 }
 
 /* Tree Item Name */

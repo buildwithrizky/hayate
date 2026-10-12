@@ -73,7 +73,7 @@
 
 .diff-add { color: var(--accent-emerald); background: var(--accent-emerald-diff); display: var(--display-block); }
 .diff-del { color: var(--accent-danger); background: var(--accent-danger-diff); display: var(--display-block); }
-.diff-meta { color: var(--accent-cyan); display: var(--display-block); }
+.diff-meta { color: var(--text-dim); display: var(--display-block); }
 
 /* Terminal Image Popover */
 .terminal-image-popover {

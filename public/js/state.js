@@ -43,7 +43,9 @@ import {
   loadExplorer,
   buildTreeNode,
   openFileInWorkbench,
-  previewFile
+  previewFile,
+  triggerExplorerNew,
+  collapseAllFolders
 } from "./explorer.js";
 import {
   fetchGitStatusData,
@@ -72,6 +74,8 @@ import {
   switchRightPanel,
   reloadRightSidebar
 } from "./layout.js";
+import { getSearchController } from "./search.js";
+import { ExplorerTreeFilter } from "./explorer-filter.js";
 
 export function escapeHtml(str) {
   if (!str) return "";
@@ -120,6 +124,7 @@ export class StateManager {
     this.folderCache = new Map();
     this.gitSectionsCollapsed = new Set();
     this.gitTreeCollapsed = new Set(); // Stores collapsed tree folder keys
+    this.treeFilter = null;
   }
 
   escapeHtml(str) {
@@ -322,6 +327,14 @@ export class StateManager {
     return previewFile(this, filePath);
   }
 
+  triggerExplorerNew(isDir = false) {
+    return triggerExplorerNew(this, isDir);
+  }
+
+  collapseAllFolders() {
+    return collapseAllFolders(this);
+  }
+
   // Git
   fetchGitStatusData() {
     return fetchGitStatusData(this);
@@ -414,5 +427,37 @@ export class StateManager {
 
   reloadRightSidebar() {
     return reloadRightSidebar(this);
+  }
+
+  // Search in Files & Tree Filter
+  focusSearch() {
+    const sc = getSearchController(this);
+    sc?.focusInput();
+  }
+
+  openSearchWithScope(scope) {
+    if (!this.isRightSidebarOpen) {
+      this.toggleRightSidebar(true);
+    }
+    this.switchRightPanel("search");
+    const sc = getSearchController(this);
+    if (sc) {
+      sc.setIncludeScope(scope);
+      sc.focusInput();
+    }
+  }
+
+  openTreeFilter() {
+    if (!this.treeFilter) {
+      const treeEl = document.getElementById("rs-files-tree");
+      if (treeEl) {
+        this.treeFilter = new ExplorerTreeFilter(treeEl, this);
+      }
+    }
+    this.treeFilter?.open();
+  }
+
+  closeTreeFilter() {
+    this.treeFilter?.close();
   }
 }

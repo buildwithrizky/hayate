@@ -139,7 +139,20 @@ export function initFsWatcher(state) {
 export const createFile = (path) => tauriInvoke("create_file", { path });
 export const createDir = (path) => tauriInvoke("create_dir", { path });
 export const renamePath = (oldPath, newPath) => tauriInvoke("rename_path", { oldPath, newPath });
+export const movePath = (srcPath, dstPath) => tauriInvoke("move_path", { srcPath, dstPath });
+export const copyPath = (srcPath, dstPath) => tauriInvoke("copy_path", { srcPath, dstPath });
 export const deletePath = (path) => tauriInvoke("delete_path", { path });
 export const revealInFinder = (path) => tauriInvoke("reveal_in_finder", { path });
+export const saveFileContent = (path, content) => tauriInvoke("save_file_content", { path, content });
+export const getFileContent = (path) => tauriInvoke("get_file_content", { path });
+export const searchInFiles = (params) => tauriInvoke("search_in_files", {
+  rootPath: params.rootPath || params.root_path,
+  query: params.query,
+  caseSensitive: params.caseSensitive ?? params.case_sensitive ?? false,
+  matchWholeWord: params.matchWholeWord ?? params.match_whole_word ?? false,
+  useRegex: params.useRegex ?? params.use_regex ?? false,
+  includePattern: params.includePattern ?? params.include_pattern ?? null,
+  maxResults: params.maxResults ?? params.max_results ?? 2000
+});
 
 

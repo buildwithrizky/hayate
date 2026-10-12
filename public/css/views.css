@@ -102,7 +102,7 @@
 }
 .wb-bar-path {
   font-family: var(--font-mono);
-  color: var(--accent-cyan);
+  color: var(--text-main);
 }
 .wb-bar-actions {
   display: var(--display-flex);
@@ -154,7 +154,7 @@
   padding: var(--space-3xs) var(--space-xs);
   border-radius: var(--radius-xs);
   font-size: var(--font-size-md-code);
-  color: var(--accent-cyan);
+  color: var(--text-main);
 }
 .wb-md-preview pre code {
   background: var(--bg-none);
@@ -329,9 +329,9 @@
 }
 
 .wb-diff-badge.commit {
-  background: var(--accent-blue-badge);
-  color: var(--accent-cyan);
-  border: var(--border-blue-strong);
+  background: var(--bg-active);
+  border: var(--border-default-strong);
+  color: var(--text-pure);
 }
 
 .wb-diff-body {
@@ -360,7 +360,7 @@
 
 .wb-diff-row.hunk-header {
   background: var(--bg-subtle);
-  color: var(--accent-cyan);
+  color: var(--text-main);
   font-weight: var(--font-weight-medium);
 }
 

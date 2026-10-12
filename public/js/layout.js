@@ -49,21 +49,31 @@ export function switchRightPanel(state, panelName) {
   state.activeRightPanel = panelName;
   const tabExplorer = document.getElementById("rs-tab-explorer");
   const tabGit = document.getElementById("rs-tab-git");
+  const tabSearch = document.getElementById("rs-tab-search");
   const panelExplorer = document.getElementById("rs-panel-explorer");
   const panelGit = document.getElementById("rs-panel-git");
+  const panelSearch = document.getElementById("rs-panel-search");
+
+  tabExplorer?.classList.toggle("active", panelName === "explorer");
+  tabGit?.classList.toggle("active", panelName === "git");
+  tabSearch?.classList.toggle("active", panelName === "search");
+
+  panelExplorer?.classList.toggle("active", panelName === "explorer");
+  panelGit?.classList.toggle("active", panelName === "git");
+  panelSearch?.classList.toggle("active", panelName === "search");
 
   if (panelName === "explorer") {
-    tabExplorer?.classList.add("active");
-    tabGit?.classList.remove("active");
-    panelExplorer?.classList.add("active");
-    panelGit?.classList.remove("active");
     state.loadExplorer();
-  } else {
-    tabExplorer?.classList.remove("active");
-    tabGit?.classList.add("active");
-    panelExplorer?.classList.remove("active");
-    panelGit?.classList.add("active");
+  } else if (panelName === "git") {
     state.loadGitStatus();
+  } else if (panelName === "search") {
+    const queryInput = document.getElementById("rs-search-query");
+    if (queryInput) {
+      setTimeout(() => {
+        queryInput.focus();
+        queryInput.select();
+      }, 50);
+    }
   }
 }
 
@@ -78,7 +88,7 @@ export function reloadRightSidebar(state) {
   state.fetchGitStatusData().then(() => {
     if (state.activeRightPanel === "explorer") {
       state.loadExplorer();
-    } else {
+    } else if (state.activeRightPanel === "git") {
       state.loadGitStatus();
     }
   });

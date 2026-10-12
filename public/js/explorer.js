@@ -1,93 +1,22 @@
 import { tauriInvoke } from "./api.js";
 import { escapeHtml, formatFileSize } from "./state.js";
 import { showExplorerContextMenu } from "./explorer-menu.js";
+import { getFileIcon } from "./explorer-icons.js";
+import { setupDragAndDrop, setupTreeBackgroundDrop } from "./explorer-dnd.js";
+import { ExplorerNav } from "./explorer-nav.js";
+import { fetchDirectoryItems, getCompactChain } from "./explorer-compact.js";
+import { renderOpenEditors } from "./explorer-open-editors.js";
+import { updateClipboardVisuals } from "./explorer-clipboard.js";
+import { applyFileNesting } from "./explorer-nesting.js";
+import { startInlineCreate } from "./explorer-inline.js";
+import { loadGitignore, matchGitignore, isPathIgnored } from "./explorer-gitignore.js";
 
-export async function loadGitignore(state) {
-  const ws = state.getActiveWorkspace();
-  if (!ws) {
-    state.gitignoreRules = [];
-    return;
-  }
-  try {
-    const data = await tauriInvoke("get_file_content", { path: ws.path + "/.gitignore" });
-    if (data && data.content) {
-      state.gitignoreRules = data.content
-        .split("\n")
-        .map((line) => line.trim())
-        .filter((line) => line && !line.startsWith("#"));
-      return;
-    }
-  } catch {}
-  state.gitignoreRules = [];
-}
+export { fetchDirectoryItems, loadGitignore, matchGitignore, isPathIgnored };
 
-export function matchGitignore(state, relPath, isDir = false) {
-  if (!state.gitignoreRules || !state.gitignoreRules.length) return false;
-  const cleanRel = relPath.replace(/^\/+/, "");
-  const parts = cleanRel.split("/");
-  const basename = parts[parts.length - 1];
+let explorerNavInstance = null;
 
-  for (const rule of state.gitignoreRules) {
-    let r = rule.trim();
-    if (!r) continue;
-    const isDirOnly = r.endsWith("/");
-    if (isDirOnly) {
-      r = r.slice(0, -1);
-      // ponytail: directory-only check; upgrade to full gitignore pathspec when nested gitignore needed
-      if (!isDir) {
-        const insideDir = r.startsWith("/")
-          ? cleanRel.startsWith(r.slice(1) + "/")
-          : cleanRel.startsWith(r + "/") || parts.slice(0, -1).includes(r);
-        if (insideDir) return true;
-        continue;
-      }
-    }
-
-    // Exact match on relative path or basename
-    if (r === cleanRel || r === basename) return true;
-
-    // Leading slash match against root
-    if (r.startsWith("/")) {
-      const rootPattern = r.slice(1);
-      if (cleanRel === rootPattern || cleanRel.startsWith(rootPattern + "/")) return true;
-      continue;
-    }
-
-    // Subdirectory match (e.g. node_modules anywhere in path)
-    if (cleanRel === r || cleanRel.startsWith(r + "/") || parts.includes(r)) return true;
-
-    // Wildcard match (e.g. *.log, temp-*)
-    if (r.includes("*")) {
-      const rx = new RegExp("^" + r.replace(/[-/\\^$+?.()|[\]{}]/g, "\\$&").replace(/\*/g, ".*") + "$");
-      if (rx.test(basename) || rx.test(cleanRel)) return true;
-    }
-  }
-  return false;
-}
-
-export function isPathIgnored(state, targetPath, isDir = false) {
-  const ws = state.getActiveWorkspace();
-  if (!ws) return false;
-
-  let relPath = targetPath;
-  if (targetPath.startsWith(ws.path)) {
-    relPath = targetPath.slice(ws.path.length).replace(/^\/+/, "");
-  }
-  const norm = relPath.replace(/\/+$/, "");
-  if (!norm) return false;
-
-  // Check .gitignore rules parsed from workspace
-  if (matchGitignore(state, norm, isDir)) return true;
-
-  // Check git status ignored list
-  if (state.gitStatusData?.ignored && Array.isArray(state.gitStatusData.ignored)) {
-    return state.gitStatusData.ignored.some((ign) => {
-      const ignNorm = ign.replace(/\/+$/, "");
-      return norm === ignNorm || norm.startsWith(ignNorm + "/");
-    });
-  }
-
-  return false;
+export function getExplorerNav() {
+  return explorerNavInstance;
 }
 
 export function buildGitStatusIndex(gitStatusData) {
@@ -157,7 +86,6 @@ export function getFileGitStatus(state, filePath) {
     relPath = filePath.slice(ws.path.length).replace(/^\/+/, "");
   }
 
-  // Ensure index cached on gitStatusData
   if (state.gitStatusData._index === undefined) {
     state.gitStatusData._index = buildGitStatusIndex(state.gitStatusData);
   }
@@ -208,27 +136,17 @@ export function getFolderGitStatus(state, folderPath) {
   return null;
 }
 
-export async function fetchDirectoryItems(state, dirPath) {
-  if (state.folderCache.has(dirPath)) {
-    return state.folderCache.get(dirPath);
-  }
-  try {
-    const data = await tauriInvoke("get_files", { path: dirPath });
-    const items = Array.isArray(data) ? data : (data?.items || []);
-    if (items.length > 0 || Array.isArray(data)) {
-      state.folderCache.set(dirPath, items);
-      return items;
-    }
-  } catch (e) {
-    console.error("fetchDirectoryItems failed", e);
-  }
-  return [];
-}
-
 export async function loadExplorer(state, forceRefresh = false) {
   const ws = state.getActiveWorkspace();
   const treeEl = document.getElementById("rs-files-tree");
   if (!treeEl) return;
+
+  renderOpenEditors(state);
+
+  if (!explorerNavInstance || explorerNavInstance.treeEl !== treeEl) {
+    explorerNavInstance = new ExplorerNav(treeEl, state);
+    setupTreeBackgroundDrop(treeEl, state);
+  }
 
   if (!ws) {
     treeEl.innerHTML = `<div class="rs-empty">No workspace selected</div>`;
@@ -243,37 +161,55 @@ export async function loadExplorer(state, forceRefresh = false) {
   }
 
   treeEl.innerHTML = `<div class="rs-empty">Loading files...</div>`;
-  const rootItems = await fetchDirectoryItems(state, ws.path);
+  const rawRootItems = await fetchDirectoryItems(state, ws.path);
 
-  if (!rootItems || rootItems.length === 0) {
+  if (!rawRootItems || rawRootItems.length === 0) {
     treeEl.innerHTML = `<div class="rs-empty">Empty workspace directory</div>`;
     return;
   }
 
+  const rootItems = applyFileNesting(rawRootItems);
   treeEl.innerHTML = "";
   for (const item of rootItems) {
     const node = await buildTreeNode(state, item, 0);
     treeEl.appendChild(node);
   }
+
+  // Restore selection highlight if previously active
+  if (explorerNavInstance.lastFocusedPath) {
+    const prev = treeEl.querySelector(`.rs-file-item[data-path="${CSS.escape(explorerNavInstance.lastFocusedPath)}"]`);
+    if (prev) {
+      prev.classList.add("selected", "focused");
+    }
+  }
+
+  updateClipboardVisuals();
 }
 
 export async function buildTreeNode(state, item, level) {
   const wrapper = document.createElement("div");
   wrapper.className = "rs-tree-node";
 
-  const row = document.createElement("div");
-  row.className = `rs-file-item ${item.isDirectory ? "is-dir" : "is-file"}`;
-  row.style.paddingLeft = `${level * 14 + 6}px`;
-  row.setAttribute("data-path", item.path);
-  row.setAttribute("data-isdir", item.isDirectory ? "true" : "false");
+  // Compact folder resolution
+  const { displayParts, finalItem } = await getCompactChain(state, item);
+  const displayName = displayParts.join("/");
+  const effectiveItem = finalItem;
 
-  const isOpen = item.isDirectory && state.openFolders.has(item.path);
+  const row = document.createElement("div");
+  row.className = `rs-file-item ${effectiveItem.isDirectory ? "is-dir" : "is-file"}`;
+  row.style.paddingLeft = `${level * 14 + 6}px`;
+  row.setAttribute("data-path", effectiveItem.path);
+  row.setAttribute("data-isdir", effectiveItem.isDirectory ? "true" : "false");
+
+  const hasNested = Boolean(effectiveItem.nestedChildren && effectiveItem.nestedChildren.length > 0);
+  const isExpandable = effectiveItem.isDirectory || hasNested;
+  const isOpen = isExpandable && state.openFolders.has(effectiveItem.path);
   if (isOpen) row.classList.add("open");
 
-  const isIgnored = isPathIgnored(state, item.path, item.isDirectory);
-  const gitStatus = item.isDirectory
-    ? getFolderGitStatus(state, item.path)
-    : getFileGitStatus(state, item.path);
+  const isIgnored = isPathIgnored(state, effectiveItem.path, effectiveItem.isDirectory);
+  const gitStatus = effectiveItem.isDirectory
+    ? getFolderGitStatus(state, effectiveItem.path)
+    : getFileGitStatus(state, effectiveItem.path);
   if (gitStatus) {
     row.classList.add(`git-${gitStatus}`);
   }
@@ -281,13 +217,11 @@ export async function buildTreeNode(state, item, level) {
     row.classList.add("is-ignored");
   }
 
-  const chevronHtml = item.isDirectory
+  const chevronHtml = isExpandable
     ? `<span class="rs-chevron"><svg class="rs-chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>`
     : `<span class="rs-chevron rs-chevron-spacer"></span>`;
 
-  const icon = item.isDirectory
-    ? (isOpen ? "&#128194;" : "&#128193;")
-    : "&#128196;";
+  const iconHtml = getFileIcon(effectiveItem.name, effectiveItem.isDirectory, isOpen);
 
   let badgeHtml = "";
   if (isIgnored) {
@@ -298,11 +232,12 @@ export async function buildTreeNode(state, item, level) {
 
   row.innerHTML = `
     ${chevronHtml}
-    <span class="rs-file-icon">${icon}</span>
-    <span class="rs-file-name" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</span>
+    ${iconHtml}
+    <span class="rs-file-name" title="${escapeHtml(effectiveItem.path)}">${escapeHtml(displayName)}</span>
     ${badgeHtml}
   `;
 
+  setupDragAndDrop(row, effectiveItem, state);
   wrapper.appendChild(row);
 
   const childrenContainer = document.createElement("div");
@@ -311,26 +246,59 @@ export async function buildTreeNode(state, item, level) {
   wrapper.appendChild(childrenContainer);
 
   if (isOpen) {
-    const subItems = await fetchDirectoryItems(state, item.path);
-    for (const sub of subItems) {
-      const subNode = await buildTreeNode(state, sub, level + 1);
-      childrenContainer.appendChild(subNode);
+    if (effectiveItem.isDirectory) {
+      const rawSub = await fetchDirectoryItems(state, effectiveItem.path);
+      const subItems = applyFileNesting(rawSub);
+      for (const sub of subItems) {
+        const subNode = await buildTreeNode(state, sub, level + 1);
+        childrenContainer.appendChild(subNode);
+      }
+    } else if (hasNested) {
+      for (const sub of effectiveItem.nestedChildren) {
+        const subNode = await buildTreeNode(state, sub, level + 1);
+        childrenContainer.appendChild(subNode);
+      }
     }
   }
 
-  row.addEventListener("click", async () => {
-    if (item.isDirectory) {
-      const willOpen = !state.openFolders.has(item.path);
-      const iconEl = row.querySelector(".rs-file-icon");
+  row.addEventListener("click", async (e) => {
+    explorerNavInstance?.handleRowClick(e, effectiveItem, row);
+
+    if (e.target.closest(".rs-chevron") && hasNested && !effectiveItem.isDirectory) {
+      // Toggle nested children under file
+      const willOpen = !state.openFolders.has(effectiveItem.path);
+      if (willOpen) {
+        state.openFolders.add(effectiveItem.path);
+        row.classList.add("open");
+        childrenContainer.innerHTML = "";
+        childrenContainer.style.display = "flex";
+        for (const sub of effectiveItem.nestedChildren) {
+          const subNode = await buildTreeNode(state, sub, level + 1);
+          childrenContainer.appendChild(subNode);
+        }
+      } else {
+        state.openFolders.delete(effectiveItem.path);
+        row.classList.remove("open");
+        childrenContainer.style.display = "none";
+      }
+      return;
+    }
+
+    if (effectiveItem.isDirectory) {
+      const willOpen = !state.openFolders.has(effectiveItem.path);
+      const iconContainer = row.querySelector(".rs-file-icon.is-folder");
 
       if (willOpen) {
-        state.openFolders.add(item.path);
+        state.openFolders.add(effectiveItem.path);
         row.classList.add("open");
-        if (iconEl) iconEl.innerHTML = "&#128194;";
+        if (iconContainer) {
+          iconContainer.outerHTML = getFileIcon(effectiveItem.name, true, true);
+        }
         childrenContainer.innerHTML = `<div class="rs-empty" style="padding:4px ${level * 14 + 20}px; text-align:left;">Loading...</div>`;
         childrenContainer.style.display = "flex";
 
-        const subItems = await fetchDirectoryItems(state, item.path);
+        const rawSub = await fetchDirectoryItems(state, effectiveItem.path);
+        const subItems = applyFileNesting(rawSub);
         childrenContainer.innerHTML = "";
         if (subItems.length === 0) {
           childrenContainer.innerHTML = `<div class="rs-empty" style="padding:4px ${level * 14 + 20}px; text-align:left;">(empty)</div>`;
@@ -341,34 +309,41 @@ export async function buildTreeNode(state, item, level) {
           }
         }
       } else {
-        state.openFolders.delete(item.path);
+        state.openFolders.delete(effectiveItem.path);
         row.classList.remove("open");
-        if (iconEl) iconEl.innerHTML = "&#128193;";
+        if (iconContainer) {
+          iconContainer.outerHTML = getFileIcon(effectiveItem.name, true, false);
+        }
         childrenContainer.style.display = "none";
       }
     } else {
-      openFileInWorkbench(state, item.path);
+      openFileInWorkbench(state, effectiveItem.path);
     }
   });
 
   row.addEventListener("contextmenu", (e) => {
     e.preventDefault();
     e.stopPropagation();
-    showExplorerContextMenu(state, e, item, false);
+    if (explorerNavInstance && !explorerNavInstance.selectedPaths.has(effectiveItem.path)) {
+      explorerNavInstance.focusPath(effectiveItem.path);
+    }
+    showExplorerContextMenu(state, e, effectiveItem, false);
   });
 
   return wrapper;
 }
 
-export function openFileInWorkbench(state, filePath) {
+export function openFileInWorkbench(state, filePath, revealLine = null) {
   if (!filePath) return;
   const isMd = /\.md$/i.test(filePath);
   const fileName = filePath.split(/[/\\]+/).filter(Boolean).pop() || filePath;
 
-  // Check if file is already open in an existing tab
   const existing = state.tabs.find((t) => t.filePath === filePath && t.type !== "diff");
   if (existing) {
     state.switchTab(existing.id);
+    if (revealLine) {
+      scrollToLine(state, existing.id, revealLine);
+    }
     return;
   }
 
@@ -377,6 +352,34 @@ export function openFileInWorkbench(state, filePath) {
     title: fileName,
     filePath
   });
+
+  if (revealLine) {
+    const newTab = state.tabs.find((t) => t.filePath === filePath && t.type !== "diff");
+    if (newTab) {
+      setTimeout(() => scrollToLine(state, newTab.id, revealLine), 120);
+    }
+  }
+}
+
+function scrollToLine(state, tabId, lineNum) {
+  const container = state.viewContainers.get(tabId);
+  if (!container) return;
+  const textarea = container.querySelector(".wb-textarea");
+  if (!textarea) return;
+
+  const lines = textarea.value.split("\n");
+  let charIdx = 0;
+  for (let i = 0; i < Math.min(lineNum - 1, lines.length); i++) {
+    charIdx += lines[i].length + 1;
+  }
+  const endIdx = charIdx + (lines[lineNum - 1] ? lines[lineNum - 1].length : 0);
+
+  textarea.focus();
+  textarea.setSelectionRange(charIdx, endIdx);
+
+  const approxLineHeight = 19;
+  const targetScroll = Math.max(0, (lineNum - 4) * approxLineHeight);
+  textarea.scrollTop = targetScroll;
 }
 
 export async function previewFile(state, filePath) {
@@ -400,4 +403,39 @@ export async function previewFile(state, filePath) {
     codeEl.textContent = "Error: " + String(err);
     sizeEl.textContent = "";
   }
+}
+
+export function triggerExplorerNew(state, isDir = false) {
+  const ws = state.getActiveWorkspace();
+  if (!ws) return;
+  const nav = getExplorerNav();
+  let targetDir = ws.path;
+  let targetContainer = document.getElementById("rs-files-tree");
+
+  if (nav && nav.lastFocusedPath) {
+    const selectedRow = document.querySelector(`.rs-file-item[data-path="${CSS.escape(nav.lastFocusedPath)}"]`);
+    if (selectedRow) {
+      const isSelectedDir = selectedRow.getAttribute("data-isdir") === "true";
+      if (isSelectedDir) {
+        targetDir = nav.lastFocusedPath;
+        if (!state.openFolders.has(targetDir)) {
+          selectedRow.click();
+        }
+        targetContainer = selectedRow.parentElement.querySelector(".rs-tree-children") || targetContainer;
+      } else {
+        const sep = nav.lastFocusedPath.includes("\\") && !nav.lastFocusedPath.includes("/") ? "\\" : "/";
+        const parts = nav.lastFocusedPath.split(/[/\\]+/).filter(Boolean);
+        parts.pop();
+        targetDir = parts.join(sep) || ws.path;
+        targetContainer = selectedRow.parentElement.parentElement || targetContainer;
+      }
+    }
+  }
+
+  startInlineCreate(state, targetDir, isDir, targetContainer);
+}
+
+export function collapseAllFolders(state) {
+  state.openFolders.clear();
+  state.loadExplorer();
 }

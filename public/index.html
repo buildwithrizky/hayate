@@ -121,13 +121,20 @@
         <!-- Switcher Bar (Orca style tabs) -->
         <div class="rs-nav">
           <div class="rs-nav-tabs">
-            <button id="rs-tab-explorer" class="rs-nav-btn active" data-panel="explorer" title="Explorer">
+            <button id="rs-tab-explorer" class="rs-nav-btn active" data-panel="explorer" title="Files (Cmd+Shift+E)">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/>
               </svg>
               <span>Files</span>
             </button>
-            <button id="rs-tab-git" class="rs-nav-btn" data-panel="git" title="Source Control">
+            <button id="rs-tab-search" class="rs-nav-btn" data-panel="search" title="Search (Cmd+Shift+F)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <span>Search</span>
+            </button>
+            <button id="rs-tab-git" class="rs-nav-btn" data-panel="git" title="Source Control (Cmd+Shift+G)">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="18" cy="18" r="3"/>
                 <circle cx="6" cy="6" r="3"/>
@@ -137,7 +144,7 @@
               <span>Git</span>
               <span id="rs-git-badge" class="rs-badge" style="display: var(--display-none);">0</span>
             </button>
-          </div>
+            </div>
         </div>
 
         <!-- Explorer Panel -->
@@ -148,7 +155,22 @@
               <span id="rs-ws-name" class="rs-subtext" title="Active workspace">-</span>
             </div>
             <div class="rs-panel-actions">
-              <button id="rs-explorer-refresh" class="btn btn-icon btn-xs" title="Refresh files">
+              <button id="rs-explorer-new-file" class="btn btn-icon btn-xs" title="New File">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="12" y1="18" x2="12" y2="12"/>
+                  <line x1="9" y1="15" x2="15" y2="15"/>
+                </svg>
+              </button>
+              <button id="rs-explorer-new-folder" class="btn btn-icon btn-xs" title="New Folder">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                  <line x1="12" y1="11" x2="12" y2="17"/>
+                  <line x1="9" y1="14" x2="15" y2="14"/>
+                </svg>
+              </button>
+              <button id="rs-explorer-refresh" class="btn btn-icon btn-xs" title="Refresh">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
                   <path d="M3 3v5h5"/>
@@ -156,10 +178,101 @@
                   <path d="M16 16h5v5"/>
                 </svg>
               </button>
+              <button id="rs-explorer-collapse-all" class="btn btn-icon btn-xs" title="Collapse All Folders">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="4 7 4 4 20 4 20 7"/>
+                  <line x1="9" y1="20" x2="15" y2="20"/>
+                  <line x1="12" y1="4" x2="12" y2="20"/>
+                </svg>
+              </button>
             </div>
           </div>
+          <!-- Open Editors Section Accordion -->
+          
+
+          <!-- Explorer Tree Filter Bar (Cmd+F) -->
+          <div id="rs-tree-filter-bar" class="rs-tree-filter-bar is-hidden">
+            <input
+              type="text"
+              id="rs-tree-filter-input"
+              class="rs-tree-filter-input"
+              placeholder="Filter by name..."
+              spellcheck="false"
+              autocomplete="off"
+            />
+            <span id="rs-tree-filter-badge" class="rs-tree-filter-badge"></span>
+            <button id="rs-tree-filter-close" class="rs-tree-filter-close" title="Clear and close filter (Esc)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+
           <div id="rs-files-tree" class="rs-panel-body rs-files-list">
             <div class="rs-empty">Select a workspace to view files</div>
+          </div>
+
+          <!-- Open Editors at bottom -->
+          <div id="rs-open-editors" class="rs-open-editors-section"></div>
+        </section>
+
+        <!-- Search Panel (VS Code Viewlet standard) -->
+        <section id="rs-panel-search" class="rs-panel">
+          <div class="rs-panel-header">
+            <div class="rs-panel-title">
+              <span class="rs-panel-label">SEARCH</span>
+              <span id="rs-search-count-badge" class="rs-badge" style="display: var(--display-none);">0</span>
+            </div>
+            <div class="rs-panel-actions">
+              <button id="rs-search-refresh" class="btn btn-icon btn-xs" title="Refresh search">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                  <path d="M3 3v5h5"/>
+                  <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+                  <path d="M16 16h5v5"/>
+                </svg>
+              </button>
+              <button id="rs-search-clear" class="btn btn-icon btn-xs" title="Clear search">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="rs-search-inputs">
+            <div class="rs-search-row">
+              <div class="rs-search-input-box">
+                <input
+                  id="rs-search-query"
+                  type="text"
+                  class="rs-search-input"
+                  placeholder="Search files or content... (Enter)"
+                  spellcheck="false"
+                  autocomplete="off"
+                />
+                <div class="rs-search-modifiers">
+                  <button id="rs-search-case" class="rs-search-btn" title="Match Case (Alt+C)">Aa</button>
+                  <button id="rs-search-word" class="rs-search-btn" title="Match Whole Word (Alt+W)">\b</button>
+                  <button id="rs-search-regex" class="rs-search-btn" title="Use Regular Expression (Alt+R)">.*</button>
+                </div>
+              </div>
+            </div>
+            <div id="rs-search-include-wrap" class="rs-search-row is-hidden">
+              <div class="rs-search-input-box">
+                <input
+                  id="rs-search-include"
+                  type="text"
+                  class="rs-search-input"
+                  placeholder="files to include (e.g. *.ts, src/)"
+                  spellcheck="false"
+                />
+              </div>
+            </div>
+          </div>
+          <div id="rs-search-results" class="rs-panel-body rs-search-results">
+            <div class="rs-search-msg">Type a query to search across files</div>
           </div>
         </section>
 
@@ -218,6 +331,9 @@
             </div>
           </div>
         </section>
+
+        <!-- Search in Files Panel -->
+        
       </aside>
     </div>
 

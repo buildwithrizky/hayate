@@ -114,16 +114,16 @@
   border-radius: var(--radius-pill);
 }
 .btn-primary {
-  background: var(--accent-blue);
-  border-color: var(--accent-blue);
-  color: var(--text-pure);
+  background: var(--bg-solid-white);
+  border-color: var(--bg-solid-white);
+  color: var(--bg-app);
   font-weight: var(--font-weight-medium);
   box-shadow: var(--accent-blue-glow-btn);
 }
 .btn-primary:hover {
   background: var(--accent-blue-hover);
   border-color: var(--accent-blue-hover);
-  color: var(--text-pure);
+  color: var(--bg-app);
   box-shadow: var(--accent-blue-glow);
 }
 .btn-danger {

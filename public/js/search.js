@@ -265,7 +265,6 @@ export class SearchController {
     groupEl.appendChild(listEl);
     return groupEl;
   }
-  }
 
   highlightSnippet(content, start, end) {
     const raw = content || "";

@@ -147,13 +147,6 @@ window.addEventListener("DOMContentLoaded", () => {
     commitsSection?.classList.toggle("collapsed");
   });
 
-  // Global window resize
-  window.addEventListener("resize", () => {
-    if (app.activeTabId) {
-      app.fitTerminal(app.activeTabId);
-    }
-  });
-
   // Explorer pane right click
   const filesTree = document.getElementById("rs-files-tree");
   const explorerPanel = document.getElementById("rs-panel-explorer");

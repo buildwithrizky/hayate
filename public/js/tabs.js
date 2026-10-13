@@ -2,7 +2,7 @@ import { sendWs } from "./api.js";
 import { escapeHtml } from "./state.js";
 import { showConfirmDialog } from "./dialog.js";
 
-export function createTab(state, workspace, type = "terminal", initOptions = {}) {
+export async function createTab(state, workspace, type = "terminal", initOptions = {}) {
   const targetWs = workspace || state.workspaces.find((w) => w.id === state.activeWorkspaceId) || state.workspaces[0];
   const repoPath = targetWs ? targetWs.path : "";
   const wsId = targetWs ? targetWs.id : "";
@@ -66,13 +66,13 @@ export function createTab(state, workspace, type = "terminal", initOptions = {})
     state.mountBrowserInstance(tab);
     switchTab(state, id);
   } else if (tab.type === "markdown") {
-    state.mountMarkdownInstance(tab);
+    await state.mountMarkdownInstance?.(tab);
     switchTab(state, id);
     if (tab.filePath && !initOptions.content) {
       state.loadFileForTab(tab);
     }
   } else if (tab.type === "editor") {
-    state.mountEditorInstance(tab);
+    await state.mountEditorInstance?.(tab);
     switchTab(state, id);
     if (tab.filePath && !initOptions.content) {
       state.loadFileForTab(tab);

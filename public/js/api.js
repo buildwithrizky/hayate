@@ -43,7 +43,8 @@ export function handleBackendMessage(state, msg) {
     const isTabActive = state.activeTabId === msg.sessionId && !document.hidden;
     if (!isTabActive) {
       if (session) {
-        session.buffer = (session.buffer || "") + msg.text;
+        const buf = (session.buffer || "") + msg.text;
+        session.buffer = buf.length > 65536 ? buf.slice(-65536) : buf;
       }
     } else {
       session?.term?.write(msg.text);
@@ -99,7 +100,7 @@ export function initFsWatcher(state) {
   let lastFocusTime = 0;
   let pendingFsRefresh = false;
 
-  const triggerRefresh = () => {
+  const triggerRefresh = (forceExplorer = true) => {
     if (document.hidden) {
       pendingFsRefresh = true;
       return;
@@ -108,7 +109,7 @@ export function initFsWatcher(state) {
     debounceTimer = setTimeout(async () => {
       if (!state.getActiveWorkspace()) return;
       if (state.activeRightPanel === "explorer") {
-        await state.loadExplorer(true);
+        await state.loadExplorer(forceExplorer);
       } else if (state.activeRightPanel === "git") {
         await state.loadGitStatus();
       } else {
@@ -120,19 +121,19 @@ export function initFsWatcher(state) {
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden && pendingFsRefresh) {
       pendingFsRefresh = false;
-      triggerRefresh();
+      triggerRefresh(false);
     }
   });
 
   tauriListen("workspace-fs-changed", () => {
-    triggerRefresh();
+    triggerRefresh(true);
   }).catch((err) => console.error("Failed to listen workspace-fs-changed", err));
 
   window.addEventListener("focus", () => {
     const now = Date.now();
-    if (now - lastFocusTime < 1000) return;
+    if (now - lastFocusTime < 5000) return;
     lastFocusTime = now;
-    triggerRefresh();
+    triggerRefresh(false);
   });
 }
 

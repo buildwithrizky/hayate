@@ -62,7 +62,6 @@ import {
   fetchGitStatusData,
   loadGitStatus,
   expandGitItems,
-  collectFilesRecursively,
   buildGitTree,
   renderGitTreeNode,
   renderGitSection,
@@ -378,10 +377,6 @@ export class StateManager {
 
   expandGitItems(repoPath, items) {
     return expandGitItems(this, repoPath, items);
-  }
-
-  collectFilesRecursively(repoPath, relDir) {
-    return collectFilesRecursively(this, repoPath, relDir);
   }
 
   buildGitTree(files) {

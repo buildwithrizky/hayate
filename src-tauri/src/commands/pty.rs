@@ -1,32 +1,7 @@
-use serde_json::{Value, json};
+use serde_json::Value;
 use std::sync::Arc;
-use sysinfo::System;
 
 use crate::pty_mgr::PtyManager;
-
-#[tauri::command]
-pub async fn get_system_status() -> Result<Value, String> {
-    let mut sys = System::new_all();
-    sys.refresh_memory();
-
-    let total_b = sys.total_memory();
-    let used_b = sys.used_memory();
-
-    let total_gb = (total_b as f64) / (1024.0 * 1024.0 * 1024.0);
-    let used_gb = (used_b as f64) / (1024.0 * 1024.0 * 1024.0);
-    let pct = if total_b > 0 {
-        ((used_b as f64 / total_b as f64) * 100.0).round() as u64
-    } else {
-        0
-    };
-
-    Ok(json!({
-        "processRssMb": 35,
-        "systemUsedGb": format!("{used_gb:.1}"),
-        "systemTotalGb": format!("{total_gb:.1}"),
-        "systemPercent": pct,
-    }))
-}
 
 #[tauri::command]
 pub async fn pty_send(msg: Value, state: tauri::State<'_, Arc<PtyManager>>) -> Result<(), String> {

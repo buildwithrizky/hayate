@@ -1,5 +1,4 @@
-import { monaco } from "../../vendor/monaco/monaco.js";
-import { getMonacoLanguage } from "./editor.js";
+import { getMonacoLanguage, getMonaco } from "./editor.js";
 import { tauriInvoke } from "../api.js";
 import { escapeHtml } from "../state.js";
 
@@ -116,6 +115,7 @@ export async function loadDiffForTab(state, tab) {
     // Cleanup previous instance if re-loading
     disposeDiffInstance(tab.id);
 
+    const monaco = await getMonaco();
     const diffEditor = monaco.editor.createDiffEditor(editorHost, {
       renderSideBySide: false,
       theme: "vs-dark",

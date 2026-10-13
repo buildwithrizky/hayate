@@ -53,7 +53,13 @@ fn extended_path() -> String {
 
 pub async fn git_status(repo_path: &str) -> Result<GitStatusResult, String> {
     let output = silent_command("git")
-        .args(["status", "--porcelain=v1", "--ignored=traditional", "-b"])
+        .args([
+            "status",
+            "--porcelain=v1",
+            "-uall",
+            "--ignored=traditional",
+            "-b",
+        ])
         .current_dir(repo_path)
         .env("PATH", extended_path())
         .output()

@@ -234,9 +234,11 @@ impl PtyManager {
                             });
                         }
 
-                        // Yield thread if buffer full to prevent CPU starvation on heavy stream
+                        // Yield thread when reading at max buffer or small rapid bursts
                         if n == buf.len() {
                             std::thread::yield_now();
+                        } else if n <= 4 {
+                            std::thread::sleep(std::time::Duration::from_millis(1));
                         }
                     }
                     Err(_) => {

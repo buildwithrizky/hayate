@@ -82,13 +82,25 @@ fn matches_include(rel_path: &str, include_regex: Option<&Regex>) -> bool {
     }
 }
 
-fn collect_search_files(dir: &Path, files: &mut Vec<PathBuf>) -> Result<(), String> {
+fn collect_search_files(
+    dir: &Path,
+    files: &mut Vec<PathBuf>,
+    limit: Option<usize>,
+) -> Result<(), String> {
+    if limit.is_some_and(|l| files.len() >= l) {
+        return Ok(());
+    }
+
     let entries = match fs::read_dir(dir) {
         Ok(e) => e,
         Err(_) => return Ok(()), // skip unreadable directories silently
     };
 
     for entry in entries.flatten() {
+        if limit.is_some_and(|l| files.len() >= l) {
+            break;
+        }
+
         let path = entry.path();
         let file_name = match path.file_name().and_then(|n| n.to_str()) {
             Some(n) => n,
@@ -105,7 +117,7 @@ fn collect_search_files(dir: &Path, files: &mut Vec<PathBuf>) -> Result<(), Stri
         };
 
         if is_dir {
-            collect_search_files(&path, files)?;
+            collect_search_files(&path, files, limit)?;
         } else {
             files.push(path);
         }
@@ -163,7 +175,7 @@ pub async fn search_in_files(
 
     tokio::task::spawn_blocking(move || {
         let mut file_list = Vec::new();
-        collect_search_files(&root, &mut file_list)?;
+        collect_search_files(&root, &mut file_list, None)?;
 
         let mut results = Vec::new();
         let mut check_buffer = [0u8; 8192];
@@ -279,12 +291,11 @@ pub async fn list_workspace_files(
 
     tokio::task::spawn_blocking(move || {
         let mut file_list = Vec::new();
-        collect_search_files(&root, &mut file_list)?;
+        collect_search_files(&root, &mut file_list, Some(limit))?;
 
         // ponytail: sort relative paths lexicographically; upgrade to gitignore crate if user ignores needed
         let mut rel_paths: Vec<String> = file_list
             .into_iter()
-            .take(limit)
             .map(|p| match p.strip_prefix(&root) {
                 Ok(rel) => rel.to_string_lossy().replace('\\', "/"),
                 Err(_) => p.to_string_lossy().replace('\\', "/"),

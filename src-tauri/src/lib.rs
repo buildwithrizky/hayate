@@ -69,12 +69,68 @@ pub fn run() {
             }
 
             // Background listener forwarding PTY messages as Tauri event "pty-message"
+            // Batch consecutive small output chunks within 16ms window to throttle IPC churn
             let pty_listener_handle = app_handle.clone();
             let mut pty_rx = pty_manager.subscribe();
             tauri::async_runtime::spawn(async move {
-                while let Ok(msg) = pty_rx.recv().await {
-                    if let Err(e) = pty_listener_handle.emit("pty-message", msg) {
-                        log::error!("Failed to emit pty-message event: {e}");
+                use tokio::sync::broadcast::error::RecvError;
+                use tokio::time::{sleep, Duration, Instant};
+
+                let mut pending_batches: std::collections::HashMap<String, String> =
+                    std::collections::HashMap::new();
+                let mut last_flush = Instant::now();
+                let flush_interval = Duration::from_millis(16);
+                const MAX_FLUSH_BYTES: usize = 32_768;
+
+                loop {
+                    tokio::select! {
+                        recv_res = pty_rx.recv() => {
+                            match recv_res {
+                                Ok(msg) => {
+                                    match msg {
+                                        pty_mgr::PtyWsMessage::Output { session_id, text } => {
+                                            let entry = pending_batches.entry(session_id.clone()).or_default();
+                                            entry.push_str(&text);
+                                            if entry.len() >= MAX_FLUSH_BYTES || last_flush.elapsed() >= flush_interval {
+                                                for (sid, chunk) in pending_batches.drain() {
+                                                    let _ = pty_listener_handle.emit("pty-message", pty_mgr::PtyWsMessage::Output {
+                                                        session_id: sid,
+                                                        text: chunk,
+                                                    });
+                                                }
+                                                last_flush = Instant::now();
+                                            }
+                                        }
+                                        other => {
+                                            // Flush any pending output before control messages to preserve order
+                                            for (sid, chunk) in pending_batches.drain() {
+                                                let _ = pty_listener_handle.emit("pty-message", pty_mgr::PtyWsMessage::Output {
+                                                    session_id: sid,
+                                                    text: chunk,
+                                                });
+                                            }
+                                            last_flush = Instant::now();
+                                            if let Err(e) = pty_listener_handle.emit("pty-message", other) {
+                                                log::error!("Failed to emit pty-message event: {e}");
+                                            }
+                                        }
+                                    }
+                                }
+                                Err(RecvError::Lagged(missed)) => {
+                                    log::warn!("PTY listener lagged behind by {missed} messages");
+                                }
+                                Err(RecvError::Closed) => break,
+                            }
+                        }
+                        _ = sleep(flush_interval), if !pending_batches.is_empty() => {
+                            for (sid, chunk) in pending_batches.drain() {
+                                let _ = pty_listener_handle.emit("pty-message", pty_mgr::PtyWsMessage::Output {
+                                    session_id: sid,
+                                    text: chunk,
+                                });
+                            }
+                            last_flush = Instant::now();
+                        }
                     }
                 }
             });
@@ -112,7 +168,6 @@ pub fn run() {
             commands::git_show_file,
             commands::upload_image,
             commands::get_image_preview,
-            commands::get_system_status,
             commands::pty_send,
             commands::watch_directory,
             commands::unwatch_directory,

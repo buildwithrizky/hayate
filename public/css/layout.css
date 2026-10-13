@@ -178,6 +178,15 @@ body.is-resizing .right-sidebar {
   gap: var(--gap-xs);
 }
 
+.sidebar,
+#sidebar-left,
+#sidebar-right,
+.workspace-container,
+.app-sidebar,
+.right-sidebar {
+  contain: var(--contain-layout-style);
+}
+
 /* Main Content */
 .app-main {
   flex: var(--flex-fill);

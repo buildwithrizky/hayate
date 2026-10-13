@@ -4,7 +4,6 @@ import { openFileInWorkbench } from "../explorer.js";
 import { updateSyncIndicator } from "./actions-menu.js";
 import { tauriInvoke } from "../api.js";
 import { escapeHtml } from "../state.js";
-import { fetchDirectoryItems } from "../explorer.js";
 import { openDiffTab } from "./diff.js";
 import { loadGitCommits } from "./commits.js";
 
@@ -117,44 +116,13 @@ export async function loadGitStatus(state, options = {}) {
   }
 }
 
-// Expand trailing slash directory entries recursively
-export async function expandGitItems(state, repoPath, items) {
-  const result = [];
-  for (const item of items) {
-    const filePath = item.file || "";
+// Flatten/normalize git items
+export function expandGitItems(state, repoPath, items) {
+  return items.map((item) => {
     let code = item.status || "M";
     if (code === "?") code = "U";
-
-    if (filePath.endsWith("/")) {
-      const subFiles = await collectFilesRecursively(state, repoPath, filePath.replace(/\/+$/, ""));
-      if (subFiles.length > 0) {
-        for (const sf of subFiles) {
-          result.push({ file: sf, status: code });
-        }
-      } else {
-        result.push({ file: filePath, status: code });
-      }
-    } else {
-      result.push({ file: filePath, status: code });
-    }
-  }
-  return result;
-}
-
-export async function collectFilesRecursively(state, repoPath, relDir) {
-  const fullDirPath = repoPath + "/" + relDir;
-  const items = await fetchDirectoryItems(state, fullDirPath);
-  const files = [];
-  for (const it of items) {
-    const childRel = relDir ? `${relDir}/${it.name}` : it.name;
-    if (it.isDirectory) {
-      const nested = await collectFilesRecursively(state, repoPath, childRel);
-      files.push(...nested);
-    } else {
-      files.push(childRel);
-    }
-  }
-  return files;
+    return { file: item.file || "", status: code };
+  });
 }
 
 // Build hierarchical tree structure from flat file list

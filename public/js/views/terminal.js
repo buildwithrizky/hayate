@@ -373,9 +373,16 @@ export function mountTerminalInstance(state, tab) {
   };
   window.addEventListener("paste", windowPasteHandler, { capture: true });
 
+  let resizeRafId = null;
   const resizeObserver = new ResizeObserver(() => {
     if (state.activeTabId === tab.id) {
-      fitTerminal(state, tab.id);
+      if (resizeRafId !== null) {
+        cancelAnimationFrame(resizeRafId);
+      }
+      resizeRafId = requestAnimationFrame(() => {
+        resizeRafId = null;
+        fitTerminal(state, tab.id);
+      });
     }
   });
   resizeObserver.observe(container);

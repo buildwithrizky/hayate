@@ -3,7 +3,6 @@ export {
   loadGitStatus,
   refreshGitAndExplorer,
   expandGitItems,
-  collectFilesRecursively,
   buildGitTree,
   renderGitTreeNode,
   renderGitSection,

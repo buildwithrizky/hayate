@@ -4,7 +4,15 @@ if (typeof window !== "undefined") {
   };
 }
 
-import { monaco } from "../../vendor/monaco/monaco.js";
+let monacoModule = null;
+
+export async function getMonaco() {
+  if (!monacoModule) {
+    monacoModule = await import("../../vendor/monaco/monaco.js");
+  }
+  return monacoModule.monaco;
+}
+
 import { tauriInvoke } from "../api.js";
 import { escapeHtml } from "../state.js";
 import { renderMarkdownHtml } from "./markdown.js";
@@ -102,7 +110,7 @@ const ICON_CLOSE = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" 
 const ICON_EYE = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
 const ICON_CODE = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>';
 
-export function mountMarkdownInstance(state, tab) {
+export async function mountMarkdownInstance(state, tab) {
   const host = document.getElementById("terminal-host");
   const container = document.createElement("div");
   container.id = `view-container-${tab.id}`;
@@ -126,6 +134,7 @@ export function mountMarkdownInstance(state, tab) {
     <div class="wb-monaco-host wb-md-editor-host" style="${tab.isEditMode ? 'display:block;' : 'display:none;'}"></div>
   `;
   host.appendChild(container);
+  state.viewContainers.set(tab.id, container);
 
   const previewEl = container.querySelector(".wb-markdown-content");
   const editorHost = container.querySelector(".wb-md-editor-host");
@@ -134,6 +143,7 @@ export function mountMarkdownInstance(state, tab) {
   const closeBtn = container.querySelector(".btn-close");
   const statusEl = container.querySelector(".wb-save-status");
 
+  const monaco = await getMonaco();
   const editor = monaco.editor.create(editorHost, {
     value: tab.content || "",
     language: "markdown",
@@ -145,6 +155,12 @@ export function mountMarkdownInstance(state, tab) {
   });
 
   editorInstances.set(tab.id, editor);
+
+  if (state.activeTabId === tab.id) {
+    container.classList.remove("hidden");
+    editor.layout();
+    editor.focus();
+  }
 
   editor.onDidChangeModelContent(() => {
     const wasDirty = tab.isDirty;
@@ -188,11 +204,9 @@ export function mountMarkdownInstance(state, tab) {
 
   saveBtn.onclick = () => saveTabContent(state, tab);
   if (closeBtn) closeBtn.onclick = () => state.closeTab(tab.id);
-
-  state.viewContainers.set(tab.id, container);
 }
 
-export function mountEditorInstance(state, tab) {
+export async function mountEditorInstance(state, tab) {
   const host = document.getElementById("terminal-host");
   const container = document.createElement("div");
   container.id = `view-container-${tab.id}`;
@@ -214,12 +228,14 @@ export function mountEditorInstance(state, tab) {
     <div class="wb-monaco-host"></div>
   `;
   host.appendChild(container);
+  state.viewContainers.set(tab.id, container);
 
   const editorHost = container.querySelector(".wb-monaco-host");
   const saveBtn = container.querySelector(".btn-save");
   const closeBtn = container.querySelector(".btn-close");
   const statusEl = container.querySelector(".wb-save-status");
 
+  const monaco = await getMonaco();
   const editor = monaco.editor.create(editorHost, {
     value: tab.content || "",
     language: lang,
@@ -231,6 +247,12 @@ export function mountEditorInstance(state, tab) {
   });
 
   editorInstances.set(tab.id, editor);
+
+  if (state.activeTabId === tab.id) {
+    container.classList.remove("hidden");
+    editor.layout();
+    editor.focus();
+  }
 
   editor.onDidChangeModelContent(() => {
     const wasDirty = tab.isDirty;
@@ -253,8 +275,6 @@ export function mountEditorInstance(state, tab) {
 
   saveBtn.onclick = () => saveTabContent(state, tab);
   closeBtn.onclick = () => state.closeTab(tab.id);
-
-  state.viewContainers.set(tab.id, container);
 }
 
 export async function loadFileForTab(state, tab) {
@@ -274,6 +294,7 @@ export async function loadFileForTab(state, tab) {
         const model = editor.getModel();
         if (model && tab.type !== "markdown") {
           const lang = getMonacoLanguage(tab.filePath);
+          const monaco = await getMonaco();
           monaco.editor.setModelLanguage(model, lang);
         }
       }
@@ -311,6 +332,7 @@ export async function saveTabContent(state, tab) {
     if (editor && tab.type !== "markdown") {
       const model = editor.getModel();
       if (model) {
+        const monaco = await getMonaco();
         monaco.editor.setModelLanguage(model, getMonacoLanguage(tab.filePath));
       }
     }

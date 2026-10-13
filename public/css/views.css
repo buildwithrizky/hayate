@@ -43,39 +43,6 @@
   overflow: var(--overflow-hidden);
 }
 
-/* Browser View */
-.wb-browser-bar {
-  height: var(--size-bar-h);
-  background: var(--bg-panel);
-  border-bottom: var(--border-default-subtle);
-  display: var(--display-flex);
-  align-items: var(--align-center);
-  gap: var(--gap-sm);
-  padding: var(--size-0) var(--space-md);
-  flex-shrink: var(--flex-shrink-0);
-}
-.wb-browser-url {
-  flex: var(--flex-1);
-  background: var(--bg-app);
-  border: var(--border-default-strong);
-  color: var(--text-main);
-  padding: var(--space-xs) var(--space-md);
-  font-size: var(--font-size-sm);
-  font-family: var(--font-mono);
-  border-radius: var(--radius-input);
-  outline: var(--outline-none);
-}
-.wb-browser-url:focus {
-  border-color: var(--border-focus);
-}
-.wb-browser-frame {
-  flex: var(--flex-1);
-  border: var(--border-none);
-  background: var(--bg-solid-white);
-  width: var(--full-pct);
-  height: var(--full-pct);
-}
-
 /* Markdown View */
 .wb-markdown-bar {
   height: var(--size-bar-h);

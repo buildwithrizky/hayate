@@ -53,6 +53,44 @@ pub fn run() {
                 )?;
             }
 
+            // Native menu setup
+            let hayate_menu = tauri::menu::SubmenuBuilder::new(app, "Hayate")
+                .about(None)
+                .separator()
+                .services()
+                .separator()
+                .hide()
+                .hide_others()
+                .show_all()
+                .separator()
+                .quit()
+                .build()?;
+
+            let edit_menu = tauri::menu::SubmenuBuilder::new(app, "Edit")
+                .cut()
+                .copy()
+                .paste()
+                .separator()
+                .select_all()
+                .build()?;
+
+            let window_menu = tauri::menu::SubmenuBuilder::new(app, "Window")
+                .minimize()
+                .maximize()
+                .separator()
+                .item(&tauri::menu::MenuItemBuilder::with_id("close-window", "Close Window")
+                    .accelerator("CmdOrCtrl+Shift+W")
+                    .build(app)?)
+                .build()?;
+
+            let menu = tauri::menu::MenuBuilder::new(app)
+                .item(&hayate_menu)
+                .item(&edit_menu)
+                .item(&window_menu)
+                .build()?;
+
+            app.set_menu(menu)?;
+
             let app_handle = app.handle().clone();
 
             // Background auto-updater task
@@ -180,7 +218,21 @@ pub fn run() {
             commands::reveal_in_finder,
             commands::search_in_files,
             commands::list_workspace_files,
+            commands::browser_create,
+            commands::browser_navigate,
+            commands::browser_set_bounds,
+            commands::browser_set_visible,
+            commands::browser_reload,
+            commands::browser_go_back,
+            commands::browser_go_forward,
+            commands::browser_close,
         ])
+        .on_menu_event(|app, event| {
+            let id = event.id().as_ref();
+            if id == "close-window" {
+                let _ = app.get_webview_window("main").and_then(|win| win.close().ok());
+            }
+        })
         .run(tauri::generate_context!())
         .expect("error while building tauri application");
 }

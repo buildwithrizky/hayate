@@ -40,6 +40,11 @@ html, body {
 }
 
 /* Global Utility */
+.hidden {
+  display: var(--display-none) !important;
+}
+
 .is-hidden {
   display: var(--display-none) !important;
 }
+

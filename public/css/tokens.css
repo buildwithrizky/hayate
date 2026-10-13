@@ -27,6 +27,7 @@
   /* Accent & Glow - Sokudo Monochrome Brand (btn-primary matching) */
   --accent-blue: #ffffff;
   --accent-blue-hover: #e6e6e6;
+  --accent-blue-active: #cccccc;
   --accent-blue-subtle: rgba(255, 255, 255, 0.05);
   --accent-blue-muted: rgba(255, 255, 255, 0.12);
   --accent-blue-badge: rgba(255, 255, 255, 0.14);
@@ -117,7 +118,7 @@
   --radius-input: 8px;
   --radius-card: 14px;
   --radius-pill: 9999px;
-  --radius-full: 50%;
+  --radius-full: 9999px;
 
   /* Backdrop Filters */
   --backdrop-header: blur(12px) saturate(1.4);
@@ -130,6 +131,7 @@
   --border-width-quote: 3px;
   --border-style-solid: solid;
   --border-style-dashed: dashed;
+  --border-default: var(--border-default-subtle);
   --border-default-subtle: var(--border-width-default) solid var(--border-subtle);
   --border-default-strong: var(--border-width-default) solid var(--border-strong);
   --border-default-transparent: var(--border-width-default) solid transparent;

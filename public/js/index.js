@@ -5,6 +5,8 @@ import { initQuickOpen, openQuickOpen } from "./quick_open.js";
 import { StateManager } from "./state.js";
 import { setupSidebarResizers } from "./layout.js";
 import { initContextMenuEvents, showExplorerContextMenu } from "./explorer-menu.js";
+import { initTabMenuEvents } from "./tab-menu.js";
+import { syncBrowserOverlayVisibility } from "./views/browser.js";
 
 // Global App Initialization
 window.addEventListener("DOMContentLoaded", () => {
@@ -25,10 +27,10 @@ window.addEventListener("DOMContentLoaded", () => {
   const newTabBtn = document.getElementById("new-tab-btn");
   const newTabMenu = document.getElementById("new-tab-menu");
 
-  // Click '+' -> Toggle dropdown menu
   newTabBtn?.addEventListener("click", (e) => {
     e.stopPropagation();
     newTabMenu?.classList.toggle("open");
+    syncBrowserOverlayVisibility(app);
   });
 
   newTabMenu?.querySelectorAll(".dropdown-item").forEach((item) => {
@@ -36,11 +38,12 @@ window.addEventListener("DOMContentLoaded", () => {
       e.stopPropagation();
       const action = item.getAttribute("data-action");
       newTabMenu?.classList.remove("open");
+      syncBrowserOverlayVisibility(app);
 
       if (action === "new-terminal") {
         app.createTab(null, "terminal");
       } else if (action === "new-browser") {
-        app.createTab(null, "browser", { url: "http://localhost:3000" });
+        app.createTab(null, "browser", { url: "" });
       } else if (action === "new-markdown") {
         app.createTab(null, "markdown", { isEditMode: true });
       } else if (action === "new-editor") {
@@ -53,6 +56,7 @@ window.addEventListener("DOMContentLoaded", () => {
     if (newTabMenu && newTabMenu.classList.contains("open")) {
       if (!newTabMenu.contains(e.target) && e.target !== newTabBtn) {
         newTabMenu.classList.remove("open");
+        syncBrowserOverlayVisibility(app);
       }
     }
     document.querySelectorAll(".ws-dropdown-menu.open").forEach((menu) => {
@@ -272,6 +276,14 @@ window.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    // Reopen closed tab shortcut: Cmd/Ctrl + Shift + T
+    if (e.shiftKey && !e.altKey && lowerKey === "t") {
+      e.preventDefault();
+      e.stopPropagation();
+      app.reopenClosedTab();
+      return;
+    }
+
     // Git viewlet shortcut: Cmd/Ctrl + Shift + G
     if (e.shiftKey && !e.altKey && lowerKey === "g") {
       e.preventDefault();
@@ -328,6 +340,18 @@ window.addEventListener("DOMContentLoaded", () => {
         return;
       }
       if (lowerKey === "l") {
+        const activeTab = app.tabs.find((t) => t.id === app.activeTabId);
+        if (activeTab && activeTab.type === "browser") {
+          e.preventDefault();
+          e.stopPropagation();
+          const container = app.viewContainers.get(activeTab.id);
+          const input = container?.querySelector(".wb-browser-url");
+          if (input) {
+            input.focus();
+            input.select();
+          }
+          return;
+        }
         e.preventDefault();
         e.stopPropagation();
         app.toggleRightSidebar();
@@ -343,7 +367,10 @@ window.addEventListener("DOMContentLoaded", () => {
         e.preventDefault();
         e.stopPropagation();
         if (app.activeTabId) {
-          app.closeTab(app.activeTabId);
+          const tab = app.tabs.find((t) => t.id === app.activeTabId);
+          if (!tab?.isPinned) {
+            app.closeTab(app.activeTabId);
+          }
         }
         return;
       }
@@ -351,7 +378,12 @@ window.addEventListener("DOMContentLoaded", () => {
         e.preventDefault();
         e.stopPropagation();
         if (app.activeTabId) {
-          app.renameTab(app.activeTabId);
+          const tab = app.tabs.find((t) => t.id === app.activeTabId);
+          if (tab?.type === "browser") {
+            app.restartActiveTab();
+          } else {
+            app.renameTab(app.activeTabId);
+          }
         }
         return;
       }
@@ -382,6 +414,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   // Start PTY listener, FS watcher, and fetch workspaces
   initContextMenuEvents();
+  initTabMenuEvents();
   app.initPty();
   app.initFsWatcher();
   app.loadWorkspaces();

@@ -1,6 +1,64 @@
-import { sendWs } from "./api.js";
+import { sendWs, tauriInvoke } from "./api.js";
 import { escapeHtml } from "./state.js";
 import { showConfirmDialog } from "./dialog.js";
+import { showTabContextMenu } from "./tab-menu.js";
+import {
+  hibernateBrowserInstance,
+  restoreBrowserInstance,
+  isTauri,
+  getViewportBounds
+} from "./views/browser.js";
+
+export function pinTab(state, tabId) {
+  const tab = state.tabs.find((t) => t.id === tabId);
+  if (!tab) return;
+  tab.isPinned = true;
+  renderTabs(state);
+}
+
+export function unpinTab(state, tabId) {
+  const tab = state.tabs.find((t) => t.id === tabId);
+  if (!tab) return;
+  tab.isPinned = false;
+  renderTabs(state);
+}
+
+export function hibernateTab(state, tabId) {
+  const tab = state.tabs.find((t) => t.id === tabId);
+  if (!tab || tab.type !== "browser") return;
+  hibernateBrowserInstance(state, tab);
+}
+
+export function wakeTab(state, tabId) {
+  const tab = state.tabs.find((t) => t.id === tabId);
+  if (!tab || tab.type !== "browser") return;
+  restoreBrowserInstance(state, tab);
+}
+
+// ponytail: single in-memory closed tab stack with 50 cap, upgrade when persistent workspace session restore needed.
+export async function reopenClosedTab(state) {
+  const closed = state.popClosedTab(state.activeWorkspaceId);
+  if (!closed) return null;
+  const targetWs = state.workspaces.find((w) => w.id === closed.workspaceId) || state.getActiveWorkspace();
+  return createTab(state, targetWs, closed.type, {
+    title: closed.title,
+    url: closed.url,
+    filePath: closed.filePath,
+    content: closed.content,
+    cwd: closed.cwd,
+    isEditMode: closed.isEditMode
+  });
+}
+
+// ponytail: keep max 1 inactive browser awake per workspace, upgrade when background tabs require per-tab wake locks.
+function autoHibernateInactiveBrowsers(state, activeTabId) {
+  const inactiveBrowsers = state.tabs.filter(
+    (t) => t.workspaceId === state.activeWorkspaceId && t.type === "browser" && t.id !== activeTabId && !t.isHibernated
+  );
+  if (inactiveBrowsers.length > 1) {
+    inactiveBrowsers.slice(1).forEach((tab) => hibernateBrowserInstance(state, tab));
+  }
+}
 
 export async function createTab(state, workspace, type = "terminal", initOptions = {}) {
   const targetWs = workspace || state.workspaces.find((w) => w.id === state.activeWorkspaceId) || state.workspaces[0];
@@ -8,23 +66,17 @@ export async function createTab(state, workspace, type = "terminal", initOptions
   const wsId = targetWs ? targetWs.id : "";
   const wsTabsCount = state.tabs.filter((t) => t.workspaceId === wsId).length;
 
-  let defaultTitle = `Term ${wsTabsCount + 1}`;
-  if (type === "terminal") {
-    defaultTitle = targetWs ? (wsTabsCount === 0 ? targetWs.name : `Term ${wsTabsCount + 1}`) : `Term ${state.tabs.length + 1}`;
-  } else if (type === "browser") {
-    defaultTitle = "Browser";
-  } else if (type === "markdown") {
-    defaultTitle = initOptions.filePath ? initOptions.filePath.split("/").pop() : "Scratch.md";
-  } else if (type === "editor") {
-    defaultTitle = initOptions.filePath ? initOptions.filePath.split("/").pop() : "Untitled";
-  } else if (type === "diff") {
-    defaultTitle = initOptions.title || "Diff";
-  } else if (type === "image") {
-    defaultTitle = initOptions.filePath ? initOptions.filePath.split("/").pop() : "Image";
-  }
+  const titles = {
+    terminal: targetWs ? (wsTabsCount === 0 ? targetWs.name : `Term ${wsTabsCount + 1}`) : `Term ${state.tabs.length + 1}`,
+    browser: "Browser",
+    markdown: initOptions.filePath ? initOptions.filePath.split("/").pop() : "Scratch.md",
+    editor: initOptions.filePath ? initOptions.filePath.split("/").pop() : "Untitled",
+    diff: initOptions.title || "Diff",
+    image: initOptions.filePath ? initOptions.filePath.split("/").pop() : "Image"
+  };
+  let defaultTitle = titles[type] || `Term ${wsTabsCount + 1}`;
 
   let title = (initOptions.title || defaultTitle).replace(/^[⇄\s]+/, "");
-
   const id = "tab_" + Math.random().toString(36).substring(2, 9);
   const tab = {
     id,
@@ -34,16 +86,15 @@ export async function createTab(state, workspace, type = "terminal", initOptions
     repoPath,
     running: false,
     pid: null,
-    // Terminal custom working directory
+    isPinned: Boolean(initOptions.isPinned),
+    isHibernated: Boolean(initOptions.isHibernated),
     cwd: initOptions.cwd || null,
-    // Metadata for non-terminal views
-    url: initOptions.url || "http://localhost:3000",
+    url: initOptions.url !== undefined ? initOptions.url : "",
     filePath: initOptions.filePath || null,
     content: initOptions.content || "",
     savedContent: initOptions.content || "",
     isDirty: false,
     isEditMode: Boolean(initOptions.isEditMode),
-    // Metadata for diff view
     diffFile: initOptions.diffFile || null,
     isStaged: Boolean(initOptions.isStaged),
     gitStatusCode: initOptions.gitStatusCode || "M",
@@ -58,25 +109,15 @@ export async function createTab(state, workspace, type = "terminal", initOptions
   if (tab.type === "terminal") {
     state.mountTerminalInstance(tab);
     switchTab(state, id);
-    const initialCwd = tab.cwd || repoPath;
-    if (initialCwd) {
-      state.spawnBackendShell(tab.id, initialCwd);
-    }
+    if (tab.cwd || repoPath) state.spawnBackendShell(tab.id, tab.cwd || repoPath);
   } else if (tab.type === "browser") {
     state.mountBrowserInstance(tab);
     switchTab(state, id);
-  } else if (tab.type === "markdown") {
-    await state.mountMarkdownInstance?.(tab);
+  } else if (tab.type === "markdown" || tab.type === "editor") {
+    const mountFn = tab.type === "markdown" ? state.mountMarkdownInstance : state.mountEditorInstance;
+    await mountFn?.(tab);
     switchTab(state, id);
-    if (tab.filePath && !initOptions.content) {
-      state.loadFileForTab(tab);
-    }
-  } else if (tab.type === "editor") {
-    await state.mountEditorInstance?.(tab);
-    switchTab(state, id);
-    if (tab.filePath && !initOptions.content) {
-      state.loadFileForTab(tab);
-    }
+    if (tab.filePath && !initOptions.content) state.loadFileForTab(tab);
   } else if (tab.type === "diff") {
     state.mountDiffInstance(tab);
     switchTab(state, id);
@@ -88,6 +129,12 @@ export async function createTab(state, workspace, type = "terminal", initOptions
 }
 
 export function switchTab(state, tabId = null) {
+  const oldTabId = state.activeTabId;
+  const oldTab = oldTabId ? state.tabs.find((t) => t.id === oldTabId) : null;
+  if (oldTab && oldTab.type === "browser" && oldTab.id !== tabId && isTauri()) {
+    tauriInvoke("browser_set_visible", { tabId: oldTab.id, visible: false }).catch(() => {});
+  }
+
   state.activeTabId = tabId || null;
   const tab = tabId ? state.tabs.find((t) => t.id === tabId) : null;
 
@@ -96,7 +143,9 @@ export function switchTab(state, tabId = null) {
     state.activeTabByWorkspace[tab.workspaceId] = tabId;
   }
 
-  // Hide or show terminal sessions
+  autoHibernateInactiveBrowsers(state, tabId);
+
+  // Switch terminal and view instances
   state.terminalSessions.forEach((session, sId) => {
     if (tabId && sId === tabId) {
       session.container.classList.remove("hidden");
@@ -104,39 +153,43 @@ export function switchTab(state, tabId = null) {
         session.term.write(session.buffer);
         session.buffer = "";
       }
-      if (typeof requestAnimationFrame === "function") {
-        requestAnimationFrame(() => {
-          state.fitTerminal(sId);
-          session.term.focus();
-        });
-      } else {
+      const doFocus = () => {
         state.fitTerminal?.(sId);
-        session.term?.focus?.();
-      }
+        session.term.focus?.();
+      };
+      if (typeof requestAnimationFrame === "function") requestAnimationFrame(doFocus);
+      else doFocus();
     } else {
       session.container.classList.add("hidden");
     }
   });
 
-  // Hide or show view containers (browser, markdown, editor, diff)
   state.viewContainers.forEach((container, vId) => {
     if (tabId && vId === tabId) {
       container.classList.remove("hidden");
-      const editorInstance = state.getEditorInstance?.(vId);
-      const diffEditorInstance = state.getDiffEditorInstance?.(vId);
-      if (editorInstance) {
-        editorInstance.layout();
-        editorInstance.focus();
-      } else if (diffEditorInstance) {
-        diffEditorInstance.layout();
+      const ed = state.getEditorInstance?.(vId);
+      const diffEd = state.getDiffEditorInstance?.(vId);
+      if (ed) {
+        ed.layout();
+        ed.focus();
+      } else if (diffEd) {
+        diffEd.layout();
       } else {
-        const textarea = container.querySelector(".wb-textarea");
-        if (textarea) textarea.focus();
+        container.querySelector(".wb-textarea")?.focus?.();
       }
     } else {
       container.classList.add("hidden");
     }
   });
+
+  if (tab && tab.type === "browser" && tab.isHibernated) {
+    restoreBrowserInstance(state, tab);
+  } else if (tab && tab.type === "browser" && tab.url && isTauri()) {
+    const container = state.viewContainers?.get(tab.id);
+    const bounds = getViewportBounds(container);
+    tauriInvoke("browser_set_bounds", { tabId: tab.id, bounds }).catch(() => {});
+    tauriInvoke("browser_set_visible", { tabId: tab.id, visible: true }).catch(() => {});
+  }
 
   state.renderWorkspaces();
   renderTabs(state);
@@ -148,6 +201,7 @@ export function switchTab(state, tabId = null) {
 export async function closeTab(state, tabId) {
   const tab = state.tabs.find((t) => t.id === tabId);
   if (!tab) return;
+  if (tab.isPinned) return;
 
   if (tab.isDirty) {
     const confirmClose = await showConfirmDialog({
@@ -159,11 +213,14 @@ export async function closeTab(state, tabId) {
     if (!confirmClose) return;
   }
 
+  if (state.recordClosedTab) {
+    state.recordClosedTab(tab);
+  }
+
   const wsId = tab.workspaceId;
   const wsTabs = state.tabs.filter((t) => t.workspaceId === wsId);
   const idxInWs = wsTabs.findIndex((t) => t.id === tabId);
 
-  // Teardown xterm & backend session if terminal
   if (tab.type === "terminal") {
     sendWs({ action: "kill", sessionId: tabId });
     const session = state.terminalSessions.get(tabId);
@@ -184,9 +241,16 @@ export async function closeTab(state, tabId) {
       state.disposeDiffInstance?.(tabId);
     } else if (tab.type === "image") {
       state.disposeImageInstance?.(tabId);
+    } else if (tab.type === "browser") {
+      if (isTauri()) {
+        tauriInvoke("browser_close", { tabId }).catch(() => {});
+      }
     }
     const viewEl = state.viewContainers.get(tabId);
     if (viewEl) {
+      if (viewEl._browserRo) {
+        viewEl._browserRo.disconnect();
+      }
       viewEl.remove();
       state.viewContainers.delete(tabId);
     }
@@ -226,9 +290,7 @@ export function restartActiveTab(state) {
       state.spawnBackendShell(tab.id, tab.cwd || tab.repoPath);
     }
   } else if (tab.type === "browser") {
-    const container = state.viewContainers.get(tab.id);
-    const iframe = container?.querySelector(".wb-browser-frame");
-    if (iframe) iframe.src = tab.url;
+    restoreBrowserInstance(state, tab);
   } else if (tab.type === "markdown" || tab.type === "editor") {
     if (tab.filePath) {
       state.loadFileForTab(tab);
@@ -249,7 +311,6 @@ export function sendInputToActive(state, text) {
   if (!state.activeTabId) return;
   const tab = state.tabs.find((t) => t.id === state.activeTabId);
   if (!tab || tab.type !== "terminal") {
-    // If active tab is not terminal, try finding or creating a terminal tab
     const termTab = state.tabs.find((t) => t.workspaceId === state.activeWorkspaceId && t.type === "terminal");
     if (termTab) {
       switchTab(state, termTab.id);
@@ -271,6 +332,18 @@ export function renameTab(state, tabId) {
   renderTabs(state);
 }
 
+function getTabTypeIcon(type) {
+  const icons = {
+    terminal: `<svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>`,
+    browser: `<svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`,
+    markdown: `<svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`,
+    editor: `<svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>`,
+    diff: `<svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="m21 3-7 7"/><path d="M8 21H3v-5"/><path d="m3 21 7-7"/></svg>`,
+    image: `<svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>`
+  };
+  return icons[type] || "";
+}
+
 export function renderTabs(state) {
   const container = document.getElementById("tabs-container");
   const emptyNotice = document.getElementById("terminal-empty-notice");
@@ -285,41 +358,38 @@ export function renderTabs(state) {
     emptyNotice.style.display = currentTabs.length === 0 ? "var(--display-flex)" : "var(--display-none)";
   }
 
-  currentTabs.forEach((tab) => {
+  const sortedTabs = [
+    ...currentTabs.filter((t) => t.isPinned),
+    ...currentTabs.filter((t) => !t.isPinned)
+  ];
+
+  sortedTabs.forEach((tab) => {
     const pill = document.createElement("div");
     const isActive = tab.id === state.activeTabId;
-    pill.className = `tab-pill ${isActive ? "active" : ""}`;
+    const isPinned = Boolean(tab.isPinned);
+    const isHibernated = Boolean(tab.isHibernated);
 
-    let typeBadge = "";
-    if (tab.type === "terminal") {
-      typeBadge = `<svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>`;
-    } else if (tab.type === "browser") {
-      typeBadge = `<svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`;
-    } else if (tab.type === "markdown") {
-      typeBadge = `<svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`;
-    } else if (tab.type === "editor") {
-      typeBadge = `<svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>`;
-    } else if (tab.type === "diff") {
-      typeBadge = `<svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="m21 3-7 7"/><path d="M8 21H3v-5"/><path d="m3 21 7-7"/></svg>`;
-    } else if (tab.type === "image") {
-      typeBadge = `<svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>`;
-    }
+    pill.className = `tab-pill ${isActive ? "active" : ""} ${isPinned ? "is-pinned" : ""} ${isHibernated ? "is-hibernated" : ""}`;
 
+    const typeBadge = getTabTypeIcon(tab.type);
+    const pinBadge = isPinned
+      ? `<svg class="tab-pin-icon" width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6l.8.8.8-.8v-6H18v-2l-2-2z"/></svg>`
+      : "";
+    const sleepBadge = isHibernated
+      ? `<span class="tab-sleep-badge" title="Sleeping (Hibernated)">zzz</span>`
+      : "";
     const dirtyBadge = tab.isDirty ? `<span class="tab-dirty-dot" title="Unsaved changes">&#x25cf;</span>` : "";
     const isEditing = tab.id === state.editingTabId;
 
-    const titleEl = isEditing
+    const titleEl = isPinned
+      ? ""
+      : isEditing
       ? `<input class="tab-title-input" value="${escapeHtml(tab.title)}" />`
       : `<span class="tab-title">${escapeHtml(tab.title)}</span>`;
+    const closeBtn = isPinned ? "" : `<button class="tab-close" title="Close tab">&times;</button>`;
+    pill.innerHTML = `${pinBadge || typeBadge}${titleEl}${sleepBadge}${dirtyBadge}${closeBtn}`;
 
-    pill.innerHTML = `
-      ${typeBadge}
-      ${titleEl}
-      ${dirtyBadge}
-      <button class="tab-close" title="Close tab">&times;</button>
-    `;
-
-    if (isEditing) {
+    if (isEditing && !isPinned) {
       const input = pill.querySelector(".tab-title-input");
       if (input) {
         let finished = false;
@@ -337,7 +407,6 @@ export function renderTabs(state) {
           state.editingTabId = null;
           renderTabs(state);
         };
-
         input.onclick = (e) => e.stopPropagation();
         input.ondblclick = (e) => e.stopPropagation();
         input.onblur = () => commit(input.value);
@@ -352,13 +421,12 @@ export function renderTabs(state) {
             cancel();
           }
         };
-
         requestAnimationFrame(() => {
           input.focus();
           input.select();
         });
       }
-    } else {
+    } else if (!isPinned) {
       const titleSpan = pill.querySelector(".tab-title");
       if (titleSpan) {
         titleSpan.ondblclick = (e) => {
@@ -369,10 +437,15 @@ export function renderTabs(state) {
     }
 
     pill.onclick = () => switchTab(state, tab.id);
-    pill.querySelector(".tab-close").onclick = (e) => {
-      e.stopPropagation();
-      closeTab(state, tab.id);
-    };
+    pill.oncontextmenu = (e) => showTabContextMenu(state, e, tab);
+
+    const closeEl = pill.querySelector(".tab-close");
+    if (closeEl) {
+      closeEl.onclick = (e) => {
+        e.stopPropagation();
+        closeTab(state, tab.id);
+      };
+    }
 
     container.appendChild(pill);
   });
@@ -384,19 +457,12 @@ export function renderStatusBadge(state) {
   const tab = state.tabs.find((t) => t.id === state.activeTabId);
 
   if (tab && tab.type === "terminal") {
-    if (tab.running) {
-      badge.textContent = tab.pid ? `PID ${tab.pid}` : "LIVE";
-      badge.style.background = "rgba(16, 185, 129, 0.15)";
-      badge.style.borderColor = "rgba(16, 185, 129, 0.4)";
-      badge.style.color = "var(--accent-emerald)";
-    } else {
-      badge.textContent = "SHELL OFF";
-      badge.style.background = "var(--bg-subtle)";
-      badge.style.borderColor = "var(--border-subtle)";
-      badge.style.color = "var(--text-dim)";
-    }
+    badge.textContent = tab.running ? (tab.pid ? `PID ${tab.pid}` : "LIVE") : "SHELL OFF";
+    badge.style.background = tab.running ? "rgba(16, 185, 129, 0.15)" : "var(--bg-subtle)";
+    badge.style.borderColor = tab.running ? "rgba(16, 185, 129, 0.4)" : "var(--border-subtle)";
+    badge.style.color = tab.running ? "var(--accent-emerald)" : "var(--text-dim)";
   } else if (tab && tab.type === "browser") {
-    badge.textContent = "BROWSER";
+    badge.textContent = tab.isHibernated ? "ASLEEP" : "BROWSER";
     badge.style.background = "rgba(0, 145, 255, 0.15)";
     badge.style.borderColor = "rgba(0, 145, 255, 0.4)";
     badge.style.color = "var(--accent-blue)";
@@ -410,13 +476,8 @@ export function renderStatusBadge(state) {
     badge.style.background = tab.isDirty ? "rgba(245, 158, 11, 0.15)" : "var(--bg-subtle)";
     badge.style.borderColor = tab.isDirty ? "rgba(245, 158, 11, 0.4)" : "var(--border-subtle)";
     badge.style.color = tab.isDirty ? "var(--accent-amber)" : "var(--text-muted)";
-  } else if (tab && tab.type === "diff") {
-    badge.textContent = "DIFF";
-    badge.style.background = "rgba(0, 210, 255, 0.15)";
-    badge.style.borderColor = "rgba(0, 210, 255, 0.4)";
-    badge.style.color = "var(--accent-cyan)";
-  } else if (tab && tab.type === "image") {
-    badge.textContent = "IMAGE";
+  } else if (tab && (tab.type === "diff" || tab.type === "image")) {
+    badge.textContent = tab.type.toUpperCase();
     badge.style.background = "rgba(0, 210, 255, 0.15)";
     badge.style.borderColor = "rgba(0, 210, 255, 0.4)";
     badge.style.color = "var(--accent-cyan)";

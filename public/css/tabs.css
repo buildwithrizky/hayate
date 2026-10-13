@@ -54,6 +54,44 @@
   box-shadow: var(--shadow-xs);
 }
 
+/* Pinned & Hibernated Tab Modifiers */
+.tab-pill.is-pinned {
+  max-width: var(--size-tab-h);
+  width: var(--size-tab-h);
+  padding: var(--size-0);
+  justify-content: var(--justify-center);
+  gap: var(--size-0);
+}
+.tab-pill.is-pinned .tab-icon,
+.tab-pill.is-pinned .tab-pin-icon {
+  margin: var(--size-0);
+}
+.tab-pill.is-hibernated {
+  opacity: var(--opacity-medium);
+  border-style: var(--border-style-dashed);
+}
+.tab-pill.is-hibernated:hover {
+  opacity: var(--opacity-high);
+}
+.tab-pin-icon {
+  width: var(--size-icon-xs);
+  height: var(--size-icon-xs);
+  color: var(--text-muted);
+}
+.tab-pill.active .tab-pin-icon {
+  color: var(--text-pure);
+}
+.tab-sleep-badge {
+  font-size: var(--font-size-2xs);
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+  background: var(--bg-panel);
+  border: var(--border-default-subtle);
+  border-radius: var(--radius-xs);
+  padding: var(--size-0) var(--space-3xs);
+  line-height: var(--line-height-reset);
+}
+
 /* Tab Type Badge & Icons */
 
 .tab-dirty-dot {
@@ -194,6 +232,7 @@
   background: var(--accent-danger-muted);
   color: var(--accent-danger);
 }
+
 .dropdown-item svg {
   flex-shrink: var(--flex-shrink-0);
   opacity: var(--opacity-high);
@@ -201,4 +240,19 @@
 }
 .dropdown-item:hover svg {
   opacity: var(--opacity-full);
+}
+
+/* Tab Context Menu Enhancements */
+.tab-context-menu {
+  min-width: var(--width-dropdown-min);
+}
+.tab-menu-item-left {
+  display: var(--display-inline-flex);
+  align-items: var(--align-center);
+  gap: var(--gap-md);
+}
+.rs-context-menu-item.is-disabled {
+  opacity: var(--opacity-disabled);
+  cursor: var(--cursor-default);
+  pointer-events: var(--pointer-events-none);
 }

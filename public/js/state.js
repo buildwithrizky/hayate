@@ -19,7 +19,12 @@ import {
   sendInputToActive,
   renderTabs,
   renderStatusBadge,
-  renderCwd
+  renderCwd,
+  pinTab,
+  unpinTab,
+  hibernateTab,
+  wakeTab,
+  reopenClosedTab
 } from "./tabs.js";
 import { mountTerminalInstance, fitTerminal } from "./views/terminal.js";
 import { mountBrowserInstance } from "./views/browser.js";
@@ -123,6 +128,7 @@ export class StateManager {
     this.terminalSessions = new Map();
     // tab id -> container element for non-terminal views (browser, markdown, editor, diff)
     this.viewContainers = new Map();
+    this.closedTabsHistory = [];
 
     // Right Sidebar (Orca style)
     this.isRightSidebarOpen = true;
@@ -238,6 +244,54 @@ export class StateManager {
 
   renderCwd() {
     return renderCwd(this);
+  }
+
+  recordClosedTab(tab) {
+    if (!tab) return;
+    this.closedTabsHistory.push({
+      type: tab.type,
+      title: tab.title,
+      workspaceId: tab.workspaceId,
+      url: tab.url,
+      filePath: tab.filePath,
+      content: tab.content,
+      cwd: tab.cwd,
+      isEditMode: tab.isEditMode
+    });
+    if (this.closedTabsHistory.length > 50) {
+      this.closedTabsHistory.shift();
+    }
+  }
+
+  popClosedTab(workspaceId = null) {
+    if (this.closedTabsHistory.length === 0) return null;
+    if (!workspaceId) return this.closedTabsHistory.pop();
+    for (let i = this.closedTabsHistory.length - 1; i >= 0; i--) {
+      if (this.closedTabsHistory[i].workspaceId === workspaceId) {
+        return this.closedTabsHistory.splice(i, 1)[0];
+      }
+    }
+    return this.closedTabsHistory.pop();
+  }
+
+  pinTab(tabId) {
+    return pinTab(this, tabId);
+  }
+
+  unpinTab(tabId) {
+    return unpinTab(this, tabId);
+  }
+
+  hibernateTab(tabId) {
+    return hibernateTab(this, tabId);
+  }
+
+  wakeTab(tabId) {
+    return wakeTab(this, tabId);
+  }
+
+  reopenClosedTab() {
+    return reopenClosedTab(this);
   }
 
   // Views - Terminal

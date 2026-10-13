@@ -25,6 +25,9 @@ export async function initPty(state) {
 }
 
 export async function sendWs(data) {
+  if (globalThis.__test_sendWs) {
+    return globalThis.__test_sendWs(data);
+  }
   try {
     await tauriInvoke("pty_send", { msg: data });
     return true;

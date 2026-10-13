@@ -11,28 +11,22 @@ import {
 
 export function pinTab(state, tabId) {
   const tab = state.tabs.find((t) => t.id === tabId);
-  if (!tab) return;
-  tab.isPinned = true;
-  renderTabs(state);
+  if (tab) { tab.isPinned = true; renderTabs(state); }
 }
 
 export function unpinTab(state, tabId) {
   const tab = state.tabs.find((t) => t.id === tabId);
-  if (!tab) return;
-  tab.isPinned = false;
-  renderTabs(state);
+  if (tab) { tab.isPinned = false; renderTabs(state); }
 }
 
 export function hibernateTab(state, tabId) {
   const tab = state.tabs.find((t) => t.id === tabId);
-  if (!tab || tab.type !== "browser") return;
-  hibernateBrowserInstance(state, tab);
+  if (tab && tab.type === "browser") hibernateBrowserInstance(state, tab);
 }
 
 export function wakeTab(state, tabId) {
   const tab = state.tabs.find((t) => t.id === tabId);
-  if (!tab || tab.type !== "browser") return;
-  restoreBrowserInstance(state, tab);
+  if (tab && tab.type === "browser") restoreBrowserInstance(state, tab);
 }
 
 // ponytail: single in-memory closed tab stack with 50 cap, upgrade when persistent workspace session restore needed.
@@ -149,12 +143,13 @@ export function switchTab(state, tabId = null) {
   state.terminalSessions.forEach((session, sId) => {
     if (tabId && sId === tabId) {
       session.container.classList.remove("hidden");
+      state.fitTerminal?.(sId, true);
       if (session.buffer) {
         session.term.write(session.buffer);
         session.buffer = "";
       }
       const doFocus = () => {
-        state.fitTerminal?.(sId);
+        session.term.refresh?.(0, (session.term.rows || 1) - 1);
         session.term.focus?.();
       };
       if (typeof requestAnimationFrame === "function") requestAnimationFrame(doFocus);
@@ -191,11 +186,11 @@ export function switchTab(state, tabId = null) {
     tauriInvoke("browser_set_visible", { tabId: tab.id, visible: true }).catch(() => {});
   }
 
-  state.renderWorkspaces();
+  state.renderWorkspaces?.();
   renderTabs(state);
   renderCwd(state);
   renderStatusBadge(state);
-  state.reloadRightSidebar();
+  state.reloadRightSidebar?.();
 }
 
 export async function closeTab(state, tabId) {
@@ -345,6 +340,7 @@ function getTabTypeIcon(type) {
 }
 
 export function renderTabs(state) {
+  if (typeof document === "undefined") return;
   const container = document.getElementById("tabs-container");
   const emptyNotice = document.getElementById("terminal-empty-notice");
   if (!container) return;
@@ -452,6 +448,7 @@ export function renderTabs(state) {
 }
 
 export function renderStatusBadge(state) {
+  if (typeof document === "undefined") return;
   const badge = document.getElementById("session-status-badge");
   if (!badge) return;
   const tab = state.tabs.find((t) => t.id === state.activeTabId);
@@ -490,6 +487,7 @@ export function renderStatusBadge(state) {
 }
 
 export function renderCwd(state) {
+  if (typeof document === "undefined") return;
   const label = document.getElementById("cwd-path");
   if (!label) return;
   const tab = state.tabs.find((t) => t.id === state.activeTabId);

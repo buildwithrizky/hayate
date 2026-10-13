@@ -299,8 +299,8 @@ export class StateManager {
     return mountTerminalInstance(this, tab);
   }
 
-  fitTerminal(sessionId) {
-    return fitTerminal(this, sessionId);
+  fitTerminal(sessionId, immediate = false) {
+    return fitTerminal(this, sessionId, immediate);
   }
 
   // Views - Browser

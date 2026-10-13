@@ -50,7 +50,7 @@ export const TERM_THEME = {
   brightWhite: "#ffffff"
 };
 
-export function fitTerminal(state, sessionId) {
+export function fitTerminal(state, sessionId, immediate = false) {
   const session = state.terminalSessions.get(sessionId);
   if (!session) return;
   try {
@@ -61,14 +61,21 @@ export function fitTerminal(state, sessionId) {
     const rows = session.term.rows;
     if (cols > 0 && rows > 0) {
       clearTimeout(session.resizeTimer);
-      session.resizeTimer = setTimeout(() => {
-        sendWs({
-          action: "resize",
-          sessionId,
-          cols,
-          rows
-        });
-      }, 100);
+      if (immediate) {
+        if (cols !== session.lastCols || rows !== session.lastRows) {
+          session.lastCols = cols;
+          session.lastRows = rows;
+          sendWs({ action: "resize", sessionId, cols, rows });
+        }
+      } else {
+        session.resizeTimer = setTimeout(() => {
+          if (cols !== session.lastCols || rows !== session.lastRows) {
+            session.lastCols = cols;
+            session.lastRows = rows;
+            sendWs({ action: "resize", sessionId, cols, rows });
+          }
+        }, 50);
+      }
     }
   } catch {}
 }
@@ -392,6 +399,9 @@ export function mountTerminalInstance(state, tab) {
     fitAddon,
     container,
     resizeObserver,
-    windowPasteHandler
+    windowPasteHandler,
+    lastCols: 0,
+    lastRows: 0,
+    resizeTimer: null
   });
 }

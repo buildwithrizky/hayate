@@ -14,6 +14,7 @@ export class SearchController {
     this.collapsedFiles = new Set();
     this.isSearching = false;
     this.debounceTimer = null;
+    this.renderToken = 0;
   }
 
   init() {
@@ -161,6 +162,9 @@ export class SearchController {
       this.countBadge.textContent = String(this.results.length);
     }
 
+    const currentToken = ++this.renderToken;
+    this.resultsContainer.innerHTML = "";
+
     // Group items by file path
     const fileGroups = new Map();
     for (const item of this.results) {
@@ -174,69 +178,93 @@ export class SearchController {
       fileGroups.get(item.path).matches.push(item);
     }
 
-    this.resultsContainer.innerHTML = "";
+    const groups = Array.from(fileGroups.values());
+    const BATCH_SIZE = 40;
+    let index = 0;
 
-    fileGroups.forEach((group) => {
-      const isCollapsed = this.collapsedFiles.has(group.path);
-      const groupEl = document.createElement("div");
-      groupEl.className = `rs-search-file-group ${isCollapsed ? "collapsed" : ""}`;
+    // ponytail: chunked rendering with requestAnimationFrame prevents UI freeze; upgrade to virtual list if >10k items
+    const renderChunk = () => {
+      if (this.renderToken !== currentToken) return;
 
-      const headerEl = document.createElement("div");
-      headerEl.className = "rs-search-file-header";
-      headerEl.title = group.path;
+      const fragment = document.createDocumentFragment();
+      const end = Math.min(index + BATCH_SIZE, groups.length);
 
-      const chevronIcon = `<svg class="rs-search-chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>`;
-      const fileName = group.relative_path.split("/").pop() || group.relative_path;
-      const fileDir = group.relative_path.includes("/") ? group.relative_path.substring(0, group.relative_path.lastIndexOf("/")) : "";
+      for (let i = index; i < end; i++) {
+        fragment.appendChild(this.createGroupElement(groups[i]));
+      }
 
-      headerEl.innerHTML = `
-        <span class="rs-search-toggle">${chevronIcon}</span>
-        <span class="rs-search-filename">${escapeHtml(fileName)}</span>
-        <span class="rs-search-filedir">${escapeHtml(fileDir)}</span>
-        <span class="rs-badge">${group.matches.length}</span>
-      `;
+      this.resultsContainer.appendChild(fragment);
+      index = end;
 
-      headerEl.addEventListener("click", () => {
-        if (this.collapsedFiles.has(group.path)) {
-          this.collapsedFiles.delete(group.path);
-          groupEl.classList.remove("collapsed");
-        } else {
-          this.collapsedFiles.add(group.path);
-          groupEl.classList.add("collapsed");
-        }
-      });
+      if (index < groups.length) {
+        requestAnimationFrame(renderChunk);
+      }
+    };
 
-      const listEl = document.createElement("div");
-      listEl.className = "rs-search-match-list";
+    renderChunk();
+  }
 
-      group.matches.forEach((m) => {
-        const itemEl = document.createElement("div");
-        itemEl.className = "rs-search-match-item";
-        if (m.is_file_match) {
-          itemEl.innerHTML = `
-            <span class="rs-search-lineno rs-file-match-tag">file</span>
-            <span class="rs-search-snippet">${this.highlightSnippet(m.line_content, m.match_start, m.match_end)}</span>
-          `;
-          itemEl.addEventListener("click", () => {
-            openFileInWorkbench(this.state, m.path, 1);
-          });
-        } else {
-          itemEl.innerHTML = `
-            <span class="rs-search-lineno">${m.line_number}</span>
-            <span class="rs-search-snippet">${this.highlightSnippet(m.line_content, m.match_start, m.match_end)}</span>
-          `;
-          itemEl.addEventListener("click", () => {
-            openFileInWorkbench(this.state, m.path, m.line_number);
-          });
-        }
+  createGroupElement(group) {
+    const isCollapsed = this.collapsedFiles.has(group.path);
+    const groupEl = document.createElement("div");
+    groupEl.className = `rs-search-file-group ${isCollapsed ? "collapsed" : ""}`;
 
-        listEl.appendChild(itemEl);
-      });
+    const headerEl = document.createElement("div");
+    headerEl.className = "rs-search-file-header";
+    headerEl.title = group.path;
 
-      groupEl.appendChild(headerEl);
-      groupEl.appendChild(listEl);
-      this.resultsContainer.appendChild(groupEl);
+    const chevronIcon = `<svg class="rs-search-chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>`;
+    const fileName = group.relative_path.split("/").pop() || group.relative_path;
+    const fileDir = group.relative_path.includes("/") ? group.relative_path.substring(0, group.relative_path.lastIndexOf("/")) : "";
+
+    headerEl.innerHTML = `
+      <span class="rs-search-toggle">${chevronIcon}</span>
+      <span class="rs-search-filename">${escapeHtml(fileName)}</span>
+      <span class="rs-search-filedir">${escapeHtml(fileDir)}</span>
+      <span class="rs-badge">${group.matches.length}</span>
+    `;
+
+    headerEl.addEventListener("click", () => {
+      if (this.collapsedFiles.has(group.path)) {
+        this.collapsedFiles.delete(group.path);
+        groupEl.classList.remove("collapsed");
+      } else {
+        this.collapsedFiles.add(group.path);
+        groupEl.classList.add("collapsed");
+      }
     });
+
+    const listEl = document.createElement("div");
+    listEl.className = "rs-search-match-list";
+
+    group.matches.forEach((m) => {
+      const itemEl = document.createElement("div");
+      itemEl.className = "rs-search-match-item";
+      if (m.is_file_match) {
+        itemEl.innerHTML = `
+          <span class="rs-search-lineno rs-file-match-tag">file</span>
+          <span class="rs-search-snippet">${this.highlightSnippet(m.line_content, m.match_start, m.match_end)}</span>
+        `;
+        itemEl.addEventListener("click", () => {
+          openFileInWorkbench(this.state, m.path, 1);
+        });
+      } else {
+        itemEl.innerHTML = `
+          <span class="rs-search-lineno">${m.line_number}</span>
+          <span class="rs-search-snippet">${this.highlightSnippet(m.line_content, m.match_start, m.match_end)}</span>
+        `;
+        itemEl.addEventListener("click", () => {
+          openFileInWorkbench(this.state, m.path, m.line_number);
+        });
+      }
+
+      listEl.appendChild(itemEl);
+    });
+
+    groupEl.appendChild(headerEl);
+    groupEl.appendChild(listEl);
+    return groupEl;
+  }
   }
 
   highlightSnippet(content, start, end) {

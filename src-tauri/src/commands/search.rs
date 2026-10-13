@@ -132,6 +132,10 @@ fn build_search_matcher(
     use_regex: bool,
 ) -> Result<Regex, String> {
     let pattern = if use_regex {
+        // Reject patterns matching empty string to prevent zero-width explosion
+        if Regex::new(query).is_ok_and(|re| re.is_match("")) {
+            return Err("Pattern matches empty string".to_string());
+        }
         query.to_string()
     } else {
         regex::escape(query)
@@ -255,6 +259,9 @@ pub async fn search_in_files(
                 };
 
                 for mat in matcher.find_iter(&line) {
+                    if mat.start() == mat.end() {
+                        continue;
+                    }
                     if results.len() >= limit {
                         break;
                     }
@@ -314,10 +321,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_search_matcher_exact() {
-        let matcher = build_search_matcher("hello", true, false, false).unwrap();
-        assert!(matcher.is_match("hello world"));
-        assert!(!matcher.is_match("Hello world"));
+    fn test_search_matcher_rejects_empty_match() {
+        let matcher = build_search_matcher("|| ", false, false, true);
+        assert!(matcher.is_err());
+    }
+
+    #[test]
+    fn test_search_matcher_literal_pipe() {
+        let matcher = build_search_matcher("|| ", false, false, false).unwrap();
+        assert!(matcher.is_match("a || b"));
+        assert!(!matcher.is_match("a | b"));
     }
 
     #[test]

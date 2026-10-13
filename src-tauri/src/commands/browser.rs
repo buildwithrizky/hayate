@@ -23,13 +23,13 @@ struct BrowserLoadedPayload {
     url: String,
 }
 
-pub fn get_titlebar_offset(window: &tauri::Window) -> f64 {
+pub fn get_titlebar_offset(_window: &tauri::Window) -> f64 {
     #[cfg(target_os = "macos")]
     {
         if let (Ok(inner), Ok(outer), Ok(scale)) = (
-            window.inner_position(),
-            window.outer_position(),
-            window.scale_factor(),
+            _window.inner_position(),
+            _window.outer_position(),
+            _window.scale_factor(),
         ) {
             let diff_y = (inner.y - outer.y) as f64 / scale;
             if diff_y > 0.0 {

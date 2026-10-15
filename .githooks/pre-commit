@@ -1,5 +1,7 @@
 #!/bin/sh
 set -e
 
-cargo fmt --manifest-path src-tauri/Cargo.toml --check
-cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings
+if command -v cargo >/dev/null 2>&1; then
+  cargo fmt --manifest-path src-tauri/Cargo.toml --check
+  cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings
+fi

@@ -10,4 +10,6 @@
 @import url('./search.css');
 @import url('./git.css');
 @import url('./git-widgets.css');
+@import url('./ports.css');
+@import url('./agents.css');
 @import url('./modals.css');

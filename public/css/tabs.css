@@ -256,3 +256,44 @@
   cursor: var(--cursor-default);
   pointer-events: var(--pointer-events-none);
 }
+
+/* Agent Status Indicators */
+.tab-agent-badge {
+  display: var(--display-inline-flex);
+  align-items: var(--align-center);
+  justify-content: var(--justify-center);
+  flex-shrink: var(--flex-shrink-0);
+}
+.agent-working-spinner {
+  width: var(--agent-spinner-size);
+  height: var(--agent-spinner-size);
+  border: var(--border-agent-spinner);
+  border-top: var(--border-agent-spinner-top);
+  border-radius: var(--radius-full);
+  display: var(--display-inline-block);
+  animation: agent-spin var(--agent-spin-duration) linear infinite;
+}
+.agent-badge-permission {
+  color: var(--agent-permission-color);
+  display: var(--display-inline-flex);
+  align-items: var(--align-center);
+}
+.agent-attention-pulse {
+  animation: agent-pulse var(--agent-pulse-duration) ease-in-out infinite;
+}
+.agent-done-dot {
+  width: var(--agent-dot-size);
+  height: var(--agent-dot-size);
+  border-radius: var(--radius-full);
+  background: var(--agent-done-color);
+  box-shadow: var(--shadow-glow-xs);
+  display: var(--display-inline-block);
+}
+@keyframes agent-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes agent-pulse {
+  0%, 100% { opacity: var(--opacity-full); transform: scale(1); }
+  50% { opacity: var(--opacity-disabled); transform: scale(1.15); }
+}

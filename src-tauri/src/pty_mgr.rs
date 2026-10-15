@@ -234,11 +234,9 @@ impl PtyManager {
                             });
                         }
 
-                        // Yield thread when reading at max buffer or small rapid bursts
+                        // Yield thread when buffer saturated to prevent starving other threads
                         if n == buf.len() {
                             std::thread::yield_now();
-                        } else if n <= 4 {
-                            std::thread::sleep(std::time::Duration::from_millis(1));
                         }
                     }
                     Err(_) => {

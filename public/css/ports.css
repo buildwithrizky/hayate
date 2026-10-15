@@ -1,0 +1,141 @@
+/* Ports Status & Popover Menu */
+.ports-status-wrapper {
+  position: var(--pos-relative);
+  display: var(--display-inline-flex);
+  align-items: var(--align-center);
+}
+
+.ports-status-pill {
+  display: var(--display-inline-flex);
+  align-items: var(--align-center);
+  gap: var(--space-xs);
+  padding: var(--space-2xs) var(--space-md);
+  border-radius: var(--radius-pill);
+  background: var(--bg-subtle);
+  border: var(--border-default-subtle);
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  cursor: var(--cursor-pointer);
+  transition: var(--transition-all-normal);
+  user-select: var(--user-select-none);
+}
+
+.ports-status-pill:hover {
+  background: var(--bg-hover);
+  color: var(--text-pure);
+  border-color: var(--border-strong);
+}
+
+.ports-status-pill.has-ports {
+  color: var(--text-pure);
+  border-color: var(--border-strong);
+}
+
+.ports-status-pill.has-ports svg {
+  color: var(--accent-emerald);
+}
+
+.ports-dropdown-menu {
+  position: var(--pos-absolute);
+  top: calc(var(--full-pct) + var(--space-xs));
+  right: var(--coord-0);
+  width: var(--width-dropdown-min);
+  background: var(--bg-panel);
+  border: var(--border-default-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-dropdown);
+  z-index: var(--z-dropdown-menu);
+  display: var(--display-flex);
+  flex-direction: var(--flex-col);
+  padding: var(--space-xs);
+  gap: var(--space-3xs);
+}
+
+.ports-dropdown-menu.is-hidden {
+  display: var(--display-none);
+}
+
+.ports-header {
+  display: var(--display-flex);
+  align-items: var(--align-center);
+  justify-content: var(--justify-between);
+  padding: var(--space-xs) var(--space-sm);
+  border-bottom: var(--border-default-subtle);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-muted);
+}
+
+.ports-list {
+  display: var(--display-flex);
+  flex-direction: var(--flex-col);
+  gap: var(--space-3xs);
+  max-height: var(--size-open-editors-max, 240px);
+  overflow-y: var(--overflow-auto);
+  padding: var(--space-3xs) var(--size-0);
+}
+
+.port-item {
+  display: var(--display-flex);
+  align-items: var(--align-center);
+  justify-content: var(--justify-between);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  transition: var(--transition-bg-fast);
+}
+
+.port-item:hover {
+  background: var(--bg-hover);
+}
+
+.port-info {
+  display: var(--display-flex);
+  align-items: var(--align-center);
+  gap: var(--space-sm);
+  min-width: var(--size-0);
+  overflow: var(--overflow-hidden);
+}
+
+.port-number {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--accent-emerald);
+}
+
+.port-proc {
+  font-size: var(--font-size-2xs);
+  color: var(--text-dim);
+  overflow: var(--overflow-hidden);
+  text-overflow: var(--text-overflow-ellipsis);
+  white-space: var(--whitespace-nowrap);
+}
+
+.port-actions {
+  display: var(--display-flex);
+  align-items: var(--align-center);
+  gap: var(--space-2xs);
+  flex-shrink: var(--flex-shrink-0);
+}
+
+.port-action-btn {
+  padding: var(--space-3xs) var(--space-xs);
+  font-size: var(--font-size-2xs);
+  border-radius: var(--radius-xs);
+  background: var(--bg-subtle);
+  border: var(--border-default-subtle);
+  color: var(--text-main);
+  cursor: var(--cursor-pointer);
+}
+
+.port-action-btn:hover {
+  background: var(--bg-active);
+  color: var(--text-pure);
+  border-color: var(--border-focus);
+}
+
+.port-action-btn.kill:hover {
+  background: var(--accent-danger-muted);
+  color: var(--accent-danger);
+  border-color: var(--accent-danger);
+}

@@ -189,6 +189,12 @@ export function mountDiffInstance(state, tab) {
         <span class="wb-save-status ${tab.isDirty ? "unsaved" : ""}">${tab.isDirty ? "● Unsaved" : ""}</span>
       </div>
       <div class="wb-bar-actions">
+        <button class="btn btn-xs btn-ask-agent" title="Send diff to active agent to review and fix">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+          <span>Ask Agent</span>
+        </button>
         ${!isDeleted && tab.filePath ? `<button class="btn btn-icon btn-xs btn-open-editor" title="Open in Editor">${ICON_CODE}</button>` : ""}
         <button class="btn btn-icon btn-xs btn-close" title="Close tab">${ICON_CLOSE}</button>
       </div>
@@ -199,10 +205,19 @@ export function mountDiffInstance(state, tab) {
 
   const closeBtn = container.querySelector(".btn-close");
   const openEditorBtn = container.querySelector(".btn-open-editor");
+  const askAgentBtn = container.querySelector(".btn-ask-agent");
+
   if (closeBtn) closeBtn.onclick = () => state.closeTab(tab.id);
   if (openEditorBtn) {
     openEditorBtn.onclick = () => {
       if (tab.filePath) state.openFileInWorkbench(tab.filePath);
+    };
+  }
+  if (askAgentBtn) {
+    askAgentBtn.onclick = () => {
+      const fileName = tab.diffFile || tab.filePath || "this file";
+      const prompt = `Please review and fix the changes in \`${fileName}\`.\n`;
+      state.sendInputToActive?.(prompt);
     };
   }
 

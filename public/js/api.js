@@ -1,3 +1,5 @@
+import { writeToTerminal, flushTerminalWrite } from "./views/terminal.js";
+
 // Tauri IPC Helper (Tauri v2 global API)
 export const tauriInvoke = (cmd, args = {}) => {
   if (typeof window !== "undefined" && window.__TAURI__?.core?.invoke) {
@@ -13,8 +15,26 @@ export const tauriListen = (event, handler) => {
   return Promise.resolve(() => {});
 };
 
+export function initTerminalFocusThrottling(state) {
+  if (typeof window === "undefined" || state._terminalThrottlingInit) return;
+  state._terminalThrottlingInit = true;
+
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && state.activeTabId) {
+      const session = state.terminalSessions?.get(state.activeTabId);
+      if (session && session.buffer) {
+        const buffered = session.buffer;
+        session.buffer = "";
+        writeToTerminal(session, buffered);
+        flushTerminalWrite(session);
+      }
+    }
+  });
+}
+
 // Native Tauri PTY Communication
 export async function initPty(state) {
+  initTerminalFocusThrottling(state);
   try {
     state.unlistenPty = await tauriListen("pty-message", (event) => {
       handleBackendMessage(state, event.payload);
@@ -50,7 +70,11 @@ export function handleBackendMessage(state, msg) {
         session.buffer = buf.length > 65536 ? buf.slice(-65536) : buf;
       }
     } else {
-      session?.term?.write(msg.text);
+      if (session) {
+        writeToTerminal(session, msg.text);
+      } else {
+        session?.term?.write(msg.text);
+      }
     }
   } else if (msg.type === "spawned") {
     if (tab) {
@@ -64,15 +88,24 @@ export function handleBackendMessage(state, msg) {
       tab.running = false;
       tab.pid = null;
     }
+    if (session) {
+      flushTerminalWrite(session);
+    }
     session?.term?.writeln(`\r\n\x1b[90m[Process completed with exit code ${msg.code}]\x1b[0m`);
     state.renderTabs();
     state.renderStatusBadge();
   } else if (msg.type === "error") {
+    if (session) {
+      flushTerminalWrite(session);
+    }
     session?.term?.writeln(`\r\n\x1b[31m[Error: ${msg.error}]\x1b[0m`);
   } else if (msg.type === "stopped") {
     if (tab) {
       tab.running = false;
       tab.pid = null;
+    }
+    if (session) {
+      flushTerminalWrite(session);
     }
     state.renderTabs();
     state.renderStatusBadge();
@@ -103,7 +136,7 @@ export function initFsWatcher(state) {
   let lastFocusTime = 0;
   let pendingFsRefresh = false;
 
-  const triggerRefresh = (forceExplorer = true) => {
+  const triggerRefresh = (forceExplorer = false, changedPath = null) => {
     if (document.hidden) {
       pendingFsRefresh = true;
       return;
@@ -112,7 +145,29 @@ export function initFsWatcher(state) {
     debounceTimer = setTimeout(async () => {
       if (!state.getActiveWorkspace()) return;
       if (state.activeRightPanel === "explorer") {
-        await state.loadExplorer(forceExplorer);
+        await state.fetchGitStatusData();
+        if (forceExplorer) {
+          await state.loadExplorer(true);
+        } else {
+          const treeEl = document.getElementById("rs-files-tree");
+          const hasExistingDom = Boolean(treeEl && treeEl.querySelector(".rs-file-item"));
+          const isGitInternal = changedPath && (changedPath.includes("/.git/") || changedPath.endsWith("/.git"));
+
+          let canPartialRefresh = isGitInternal && hasExistingDom;
+          if (!canPartialRefresh && hasExistingDom && changedPath) {
+            try {
+              canPartialRefresh = Boolean(treeEl.querySelector(`.rs-file-item[data-path="${CSS.escape(changedPath)}"]`));
+            } catch {
+              canPartialRefresh = false;
+            }
+          }
+
+          if (canPartialRefresh && typeof state.refreshGitStatusBadges === "function") {
+            state.refreshGitStatusBadges();
+          } else {
+            await state.loadExplorer(false);
+          }
+        }
       } else if (state.activeRightPanel === "git") {
         await state.loadGitStatus();
       } else {
@@ -128,8 +183,14 @@ export function initFsWatcher(state) {
     }
   });
 
-  tauriListen("workspace-fs-changed", () => {
-    triggerRefresh(true);
+  tauriListen("workspace-fs-changed", (event) => {
+    const changedPath = event?.payload?.path;
+    if (changedPath && state.folderCache) {
+      state.folderCache.delete(changedPath);
+      const parentDir = changedPath.substring(0, changedPath.lastIndexOf("/"));
+      if (parentDir) state.folderCache.delete(parentDir);
+    }
+    triggerRefresh(false, changedPath);
   }).catch((err) => console.error("Failed to listen workspace-fs-changed", err));
 
   window.addEventListener("focus", () => {

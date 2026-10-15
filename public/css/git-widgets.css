@@ -140,3 +140,36 @@
   border-radius: var(--radius-pill);
   padding: var(--space-3xs) var(--space-xs);
 }
+
+/* Worktree Items & Badges */
+.rs-worktree-btn {
+  margin-left: var(--space-xs);
+}
+.rs-worktree-item {
+  display: var(--display-flex);
+  align-items: var(--align-center);
+  gap: var(--space-sm);
+}
+.rs-worktree-branch {
+  color: var(--text-pure);
+  font-weight: var(--font-weight-medium);
+  margin-right: var(--space-sm);
+}
+.rs-worktree-path {
+  color: var(--text-dim);
+  font-size: var(--font-size-2xs);
+}
+.rs-tag-agent {
+  color: var(--agent-working-color);
+  border-color: var(--accent-amber-border);
+  background: var(--accent-amber-muted);
+}
+.rs-worktree-remove {
+  color: var(--text-dim);
+  opacity: var(--opacity-medium);
+  margin-left: var(--coord-auto);
+}
+.rs-worktree-remove:hover {
+  color: var(--accent-danger);
+  opacity: var(--opacity-full);
+}

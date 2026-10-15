@@ -50,22 +50,28 @@ export function switchRightPanel(state, panelName) {
   const tabExplorer = document.getElementById("rs-tab-explorer");
   const tabGit = document.getElementById("rs-tab-git");
   const tabSearch = document.getElementById("rs-tab-search");
+  const tabAgents = document.getElementById("rs-tab-agents");
   const panelExplorer = document.getElementById("rs-panel-explorer");
   const panelGit = document.getElementById("rs-panel-git");
   const panelSearch = document.getElementById("rs-panel-search");
+  const panelAgents = document.getElementById("rs-panel-agents");
 
   tabExplorer?.classList.toggle("active", panelName === "explorer");
   tabGit?.classList.toggle("active", panelName === "git");
   tabSearch?.classList.toggle("active", panelName === "search");
+  tabAgents?.classList.toggle("active", panelName === "agents");
 
   panelExplorer?.classList.toggle("active", panelName === "explorer");
   panelGit?.classList.toggle("active", panelName === "git");
   panelSearch?.classList.toggle("active", panelName === "search");
+  panelAgents?.classList.toggle("active", panelName === "agents");
 
   if (panelName === "explorer") {
     state.loadExplorer();
   } else if (panelName === "git") {
     state.loadGitStatus();
+  } else if (panelName === "agents") {
+    state.renderAgentsSidebarPanel?.();
   } else if (panelName === "search") {
     const queryInput = document.getElementById("rs-search-query");
     if (queryInput) {

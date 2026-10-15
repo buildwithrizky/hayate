@@ -380,4 +380,16 @@
   --space-md-heading-top: 1.2em;
   --space-md-heading-bottom: 0.6em;
   --space-md-list-indent: 1.8em;
+
+  /* Agent Status Indicators */
+  --agent-dot-size: 8px;
+  --agent-spinner-size: 10px;
+  --agent-working-border: 1.5px;
+  --agent-working-color: #f59e0b;
+  --agent-permission-color: #fbbf24;
+  --agent-done-color: #10b981;
+  --agent-spin-duration: 0.8s;
+  --agent-pulse-duration: 1.5s;
+  --border-agent-spinner: 1.5px solid rgba(245, 158, 11, 0.25);
+  --border-agent-spinner-top: 1.5px solid #f59e0b;
 }

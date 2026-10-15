@@ -1,5 +1,6 @@
 import { tauriInvoke } from "../api.js";
 import { showMessageDialog } from "../dialog.js";
+import { openWorktreePicker } from "./worktree-picker.js";
 
 export async function updateSyncIndicator(state) {
   const ws = state.getActiveWorkspace();
@@ -66,6 +67,8 @@ export function showGitMoreMenu(state, anchorEl) {
     { label: "Fetch", action: () => executeGitAction(state, "git_fetch", "Fetch") },
     { label: "Pull", action: () => executeGitAction(state, "git_pull", "Pull") },
     { label: "Push", action: () => executeGitAction(state, "git_push", "Push") },
+    { divider: true },
+    { label: "Worktrees...", action: () => openWorktreePicker(state) },
     { divider: true },
     { label: "Stash Changes", action: () => executeGitAction(state, "git_stash", "Stash", { includeUntracked: true }) },
     { label: "Pop Latest Stash", action: () => executeGitAction(state, "git_stash_pop", "Pop Stash") }

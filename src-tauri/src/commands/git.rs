@@ -287,9 +287,134 @@ pub async fn git_show_file(repo_path: String, spec: String) -> Result<String, St
     git_ops::git_show_file(&repo_path, &spec).await
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WorktreeItem {
+    pub path: String,
+    pub head: String,
+    pub branch: String,
+    pub is_bare: bool,
+    pub is_main: bool,
+    pub is_agent_scratch: bool,
+}
+
+pub fn parse_worktree_list(output: &str) -> Vec<WorktreeItem> {
+    let mut worktrees = Vec::new();
+    let blocks = output.split("\n\n");
+    let mut is_first = true;
+
+    for block in blocks {
+        let lines: Vec<&str> = block.lines().map(|l| l.trim()).filter(|l| !l.is_empty()).collect();
+        if lines.is_empty() {
+            continue;
+        }
+
+        let mut path = String::new();
+        let mut head = String::new();
+        let mut branch = String::new();
+        let mut is_bare = false;
+
+        for line in lines {
+            if let Some(p) = line.strip_prefix("worktree ") {
+                path = p.trim().to_string();
+            } else if let Some(h) = line.strip_prefix("HEAD ") {
+                head = h.trim().to_string();
+            } else if let Some(b) = line.strip_prefix("branch ") {
+                let stripped = b.trim();
+                branch = stripped.strip_prefix("refs/heads/").unwrap_or(stripped).to_string();
+            } else if line == "bare" {
+                is_bare = true;
+            }
+        }
+
+        if !path.is_empty() {
+            let is_agent_scratch = path.contains(".claude/worktrees") || path.contains(".gsd-workspaces");
+            worktrees.push(WorktreeItem {
+                path,
+                head,
+                branch,
+                is_bare,
+                is_main: is_first,
+                is_agent_scratch,
+            });
+            is_first = false;
+        }
+    }
+
+    worktrees
+}
+
+#[tauri::command]
+pub async fn git_list_worktrees(repo_path: String) -> Result<Vec<WorktreeItem>, String> {
+    let raw = run_git_cmd(&repo_path, &["worktree", "list", "--porcelain"]).await?;
+    Ok(parse_worktree_list(&raw))
+}
+
+#[tauri::command]
+pub async fn git_add_worktree(
+    repo_path: String,
+    path: String,
+    branch: String,
+    create_branch: bool,
+) -> Result<String, String> {
+    let p = path.trim();
+    let b = branch.trim();
+    if p.is_empty() {
+        return Err("path required".to_string());
+    }
+
+    let args: Vec<&str> = if create_branch {
+        if b.is_empty() {
+            return Err("branch required when create_branch is true".to_string());
+        }
+        vec!["worktree", "add", "-b", b, p]
+    } else if !b.is_empty() {
+        vec!["worktree", "add", p, b]
+    } else {
+        vec!["worktree", "add", p]
+    };
+
+    run_git_cmd(&repo_path, &args).await
+}
+
+#[tauri::command]
+pub async fn git_remove_worktree(
+    repo_path: String,
+    path: String,
+    force: bool,
+) -> Result<String, String> {
+    let p = path.trim();
+    if p.is_empty() {
+        return Err("path required".to_string());
+    }
+
+    let args: Vec<&str> = if force {
+        vec!["worktree", "remove", "--force", p]
+    } else {
+        vec!["worktree", "remove", p]
+    };
+
+    run_git_cmd(&repo_path, &args).await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_parse_worktree_list() {
+        let sample = "worktree /Users/dev/hayate\nHEAD 1234abcd\nbranch refs/heads/main\n\nworktree /Users/dev/hayate/.claude/worktrees/agent-1\nHEAD 5678ef01\nbranch refs/heads/agent-feature\n\n";
+        let list = parse_worktree_list(sample);
+        assert_eq!(list.len(), 2);
+        assert_eq!(list[0].path, "/Users/dev/hayate");
+        assert_eq!(list[0].branch, "main");
+        assert!(list[0].is_main);
+        assert!(!list[0].is_agent_scratch);
+
+        assert_eq!(list[1].path, "/Users/dev/hayate/.claude/worktrees/agent-1");
+        assert_eq!(list[1].branch, "agent-feature");
+        assert!(!list[1].is_main);
+        assert!(list[1].is_agent_scratch);
+    }
 
     #[test]
     fn test_parse_branch_list() {

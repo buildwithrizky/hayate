@@ -13,7 +13,12 @@ fn is_noisy(path: &Path) -> bool {
     for comp in path.components() {
         let name = comp.as_os_str();
         if in_git {
-            if name == "objects" || name == "index.lock" || name == "logs" {
+            if name == "objects"
+                || name == "index"
+                || name == "index.lock"
+                || name == "logs"
+                || name.to_str().is_some_and(|s| s.ends_with(".lock"))
+            {
                 return true;
             }
         } else if name == ".git" {
@@ -50,7 +55,7 @@ fn is_noisy(path: &Path) -> bool {
 
     path.file_name()
         .and_then(|n| n.to_str())
-        .is_some_and(|name| name.ends_with('~') || name.ends_with(".tmp") || name == "index.lock")
+        .is_some_and(|name| name.ends_with('~') || name.ends_with(".tmp") || name.ends_with(".lock"))
 }
 
 struct ActiveWatch {

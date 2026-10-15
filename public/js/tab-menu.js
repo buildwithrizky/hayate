@@ -60,6 +60,17 @@ export function showTabContextMenu(state, event, tab) {
     }
   ];
 
+  if (tab.type === "terminal") {
+    actions.push({
+      label: tab.isSplit ? "Close Split Pane" : "Split Right (Cmd+D)",
+      icon: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/></svg>`,
+      action: () => {
+        if (tab.isSplit) state.closeSplitPane?.(tab);
+        else state.splitActiveTerminal?.();
+      }
+    });
+  }
+
   if (isBrowser) {
     actions.push({
       label: isHibernated ? "Wake Tab" : "Sleep Tab (Hibernate)",

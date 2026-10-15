@@ -2,6 +2,8 @@ import { sendWs, tauriInvoke } from "./api.js";
 import { escapeHtml } from "./state.js";
 import { showConfirmDialog } from "./dialog.js";
 import { showTabContextMenu } from "./tab-menu.js";
+import { getAgentBadgeHtml } from "./agent-status.js";
+import { flushTerminalWrite, writeToTerminal } from "./views/terminal.js";
 import {
   hibernateBrowserInstance,
   restoreBrowserInstance,
@@ -13,20 +15,17 @@ export function pinTab(state, tabId) {
   const tab = state.tabs.find((t) => t.id === tabId);
   if (tab) { tab.isPinned = true; renderTabs(state); }
 }
-
 export function unpinTab(state, tabId) {
   const tab = state.tabs.find((t) => t.id === tabId);
   if (tab) { tab.isPinned = false; renderTabs(state); }
 }
-
 export function hibernateTab(state, tabId) {
   const tab = state.tabs.find((t) => t.id === tabId);
-  if (tab && tab.type === "browser") hibernateBrowserInstance(state, tab);
+  if (tab?.type === "browser") hibernateBrowserInstance(state, tab);
 }
-
 export function wakeTab(state, tabId) {
   const tab = state.tabs.find((t) => t.id === tabId);
-  if (tab && tab.type === "browser") restoreBrowserInstance(state, tab);
+  if (tab?.type === "browser") restoreBrowserInstance(state, tab);
 }
 
 // ponytail: single in-memory closed tab stack with 50 cap, upgrade when persistent workspace session restore needed.
@@ -35,12 +34,8 @@ export async function reopenClosedTab(state) {
   if (!closed) return null;
   const targetWs = state.workspaces.find((w) => w.id === closed.workspaceId) || state.getActiveWorkspace();
   return createTab(state, targetWs, closed.type, {
-    title: closed.title,
-    url: closed.url,
-    filePath: closed.filePath,
-    content: closed.content,
-    cwd: closed.cwd,
-    isEditMode: closed.isEditMode
+    title: closed.title, url: closed.url, filePath: closed.filePath,
+    content: closed.content, cwd: closed.cwd, isEditMode: closed.isEditMode
   });
 }
 
@@ -66,11 +61,11 @@ export async function createTab(state, workspace, type = "terminal", initOptions
     markdown: initOptions.filePath ? initOptions.filePath.split("/").pop() : "Scratch.md",
     editor: initOptions.filePath ? initOptions.filePath.split("/").pop() : "Untitled",
     diff: initOptions.title || "Diff",
-    image: initOptions.filePath ? initOptions.filePath.split("/").pop() : "Image"
+    image: initOptions.filePath ? initOptions.filePath.split("/").pop() : "Image",
+    kanban: "Agent Board"
   };
-  let defaultTitle = titles[type] || `Term ${wsTabsCount + 1}`;
-
-  let title = (initOptions.title || defaultTitle).replace(/^[⇄\s]+/, "");
+  const defaultTitle = titles[type] || `Term ${wsTabsCount + 1}`;
+  const title = (initOptions.title || defaultTitle).replace(/^[⇄\s]+/, "");
   const id = "tab_" + Math.random().toString(36).substring(2, 9);
   const tab = {
     id,
@@ -96,29 +91,25 @@ export async function createTab(state, workspace, type = "terminal", initOptions
   };
 
   state.tabs.push(tab);
-  if (wsId) {
-    state.activeTabByWorkspace[wsId] = id;
-  }
+  if (wsId) state.activeTabByWorkspace[wsId] = id;
 
   if (tab.type === "terminal") {
     state.mountTerminalInstance(tab);
-    switchTab(state, id);
     if (tab.cwd || repoPath) state.spawnBackendShell(tab.id, tab.cwd || repoPath);
   } else if (tab.type === "browser") {
     state.mountBrowserInstance(tab);
-    switchTab(state, id);
   } else if (tab.type === "markdown" || tab.type === "editor") {
     const mountFn = tab.type === "markdown" ? state.mountMarkdownInstance : state.mountEditorInstance;
     await mountFn?.(tab);
-    switchTab(state, id);
     if (tab.filePath && !initOptions.content) state.loadFileForTab(tab);
   } else if (tab.type === "diff") {
     state.mountDiffInstance(tab);
-    switchTab(state, id);
   } else if (tab.type === "image") {
     state.mountImageInstance(tab);
-    switchTab(state, id);
+  } else if (tab.type === "kanban") {
+    state.mountKanbanInstance?.(tab);
   }
+  switchTab(state, id);
   return tab;
 }
 
@@ -128,9 +119,14 @@ export function switchTab(state, tabId = null) {
   if (oldTab && oldTab.type === "browser" && oldTab.id !== tabId && isTauri()) {
     tauriInvoke("browser_set_visible", { tabId: oldTab.id, visible: false }).catch(() => {});
   }
+  if (oldTabId && oldTabId !== tabId) {
+    const oldSession = state.terminalSessions?.get(oldTabId);
+    if (oldSession) flushTerminalWrite(oldSession);
+  }
 
   state.activeTabId = tabId || null;
   const tab = tabId ? state.tabs.find((t) => t.id === tabId) : null;
+  if (tab && tab.needsAttention) tab.needsAttention = false;
 
   if (tab && tab.workspaceId) {
     state.activeWorkspaceId = tab.workspaceId;
@@ -145,8 +141,10 @@ export function switchTab(state, tabId = null) {
       session.container.classList.remove("hidden");
       state.fitTerminal?.(sId, true);
       if (session.buffer) {
-        session.term.write(session.buffer);
+        const buffered = session.buffer;
         session.buffer = "";
+        writeToTerminal(session, buffered);
+        flushTerminalWrite(session);
       }
       const doFocus = () => {
         session.term.refresh?.(0, (session.term.rows || 1) - 1);
@@ -220,11 +218,18 @@ export async function closeTab(state, tabId) {
     sendWs({ action: "kill", sessionId: tabId });
     const session = state.terminalSessions.get(tabId);
     if (session) {
+      if (session.flushRafId) {
+        cancelAnimationFrame(session.flushRafId);
+        session.flushRafId = null;
+      }
       clearTimeout(session.resizeTimer);
       if (session.windowPasteHandler) {
         window.removeEventListener("paste", session.windowPasteHandler, { capture: true });
       }
       session.resizeObserver?.disconnect();
+      try {
+        session.renderAddon?.dispose?.();
+      } catch {}
       session.term.dispose();
       session.container.remove();
       state.terminalSessions.delete(tabId);
@@ -236,10 +241,8 @@ export async function closeTab(state, tabId) {
       state.disposeDiffInstance?.(tabId);
     } else if (tab.type === "image") {
       state.disposeImageInstance?.(tabId);
-    } else if (tab.type === "browser") {
-      if (isTauri()) {
-        tauriInvoke("browser_close", { tabId }).catch(() => {});
-      }
+    } else if (tab.type === "browser" && isTauri()) {
+      tauriInvoke("browser_close", { tabId }).catch(() => {});
     }
     const viewEl = state.viewContainers.get(tabId);
     if (viewEl) {
@@ -286,19 +289,16 @@ export function restartActiveTab(state) {
     }
   } else if (tab.type === "browser") {
     restoreBrowserInstance(state, tab);
-  } else if (tab.type === "markdown" || tab.type === "editor") {
-    if (tab.filePath) {
-      state.loadFileForTab(tab);
-    }
+  } else if ((tab.type === "markdown" || tab.type === "editor") && tab.filePath) {
+    state.loadFileForTab(tab);
   }
 }
 
 export function clearActiveTab(state) {
   if (!state.activeTabId) return;
   const tab = state.tabs.find((t) => t.id === state.activeTabId);
-  if (tab && tab.type === "terminal") {
-    const session = state.terminalSessions.get(state.activeTabId);
-    session?.term?.clear();
+  if (tab?.type === "terminal") {
+    state.terminalSessions.get(state.activeTabId)?.term?.clear();
   }
 }
 
@@ -326,7 +326,6 @@ export function renameTab(state, tabId) {
   state.editingTabId = tabId || state.activeTabId;
   renderTabs(state);
 }
-
 function getTabTypeIcon(type) {
   const icons = {
     terminal: `<svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>`,
@@ -334,7 +333,8 @@ function getTabTypeIcon(type) {
     markdown: `<svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`,
     editor: `<svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>`,
     diff: `<svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="m21 3-7 7"/><path d="M8 21H3v-5"/><path d="m3 21 7-7"/></svg>`,
-    image: `<svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>`
+    image: `<svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>`,
+    kanban: `<svg class="tab-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="12" rx="1"/><rect x="17" y="3" width="5" height="15" rx="1"/></svg>`
   };
   return icons[type] || "";
 }
@@ -364,9 +364,11 @@ export function renderTabs(state) {
     const isActive = tab.id === state.activeTabId;
     const isPinned = Boolean(tab.isPinned);
     const isHibernated = Boolean(tab.isHibernated);
+    const isNeedsAttention = Boolean(tab.needsAttention);
 
-    pill.className = `tab-pill ${isActive ? "active" : ""} ${isPinned ? "is-pinned" : ""} ${isHibernated ? "is-hibernated" : ""}`;
+    pill.className = `tab-pill ${isActive ? "active" : ""} ${isPinned ? "is-pinned" : ""} ${isHibernated ? "is-hibernated" : ""} ${isNeedsAttention ? "needs-attention" : ""}`;
 
+    const agentBadge = tab.type === "terminal" ? getAgentBadgeHtml(tab) : "";
     const typeBadge = getTabTypeIcon(tab.type);
     const pinBadge = isPinned
       ? `<svg class="tab-pin-icon" width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6l.8.8.8-.8v-6H18v-2l-2-2z"/></svg>`
@@ -383,7 +385,7 @@ export function renderTabs(state) {
       ? `<input class="tab-title-input" value="${escapeHtml(tab.title)}" />`
       : `<span class="tab-title">${escapeHtml(tab.title)}</span>`;
     const closeBtn = isPinned ? "" : `<button class="tab-close" title="Close tab">&times;</button>`;
-    pill.innerHTML = `${pinBadge || typeBadge}${titleEl}${sleepBadge}${dirtyBadge}${closeBtn}`;
+    pill.innerHTML = `${pinBadge || agentBadge || typeBadge}${titleEl}${sleepBadge}${dirtyBadge}${closeBtn}`;
 
     if (isEditing && !isPinned) {
       const input = pill.querySelector(".tab-title-input");

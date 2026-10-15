@@ -56,6 +56,7 @@ pub async fn git_status(repo_path: &str) -> Result<GitStatusResult, String> {
         .args([
             "status",
             "--porcelain=v1",
+            "--no-optional-locks",
             "-uall",
             "--ignored=traditional",
             "-b",

@@ -50,6 +50,14 @@ import {
   disposeImageInstance
 } from "./views/image.js";
 import {
+  mountKanbanInstance,
+  renderAgentsSidebarPanel
+} from "./views/kanban.js";
+import {
+  splitActiveTerminal,
+  closeSplitPane
+} from "./views/terminal-split.js";
+import {
   loadGitignore,
   matchGitignore,
   isPathIgnored,
@@ -57,6 +65,7 @@ import {
   getFolderGitStatus,
   fetchDirectoryItems,
   loadExplorer,
+  refreshGitStatusBadges,
   buildTreeNode,
   openFileInWorkbench,
   previewFile,
@@ -177,74 +186,25 @@ export class StateManager {
     return loadWorkspaces(this);
   }
 
-  pickFolder() {
-    return pickFolder(this);
-  }
-
-  addWorkspace(name, path) {
-    return addWorkspace(this, name, path);
-  }
-
-  updateWorkspace(id, name, path) {
-    return updateWorkspace(this, id, name, path);
-  }
-
-  deleteWorkspace(id) {
-    return deleteWorkspace(this, id);
-  }
-
-  selectWorkspace(ws) {
-    return selectWorkspace(this, ws);
-  }
-
-  renderWorkspaces() {
-    return renderWorkspaces(this);
-  }
-
-  getActiveWorkspace() {
-    return getActiveWorkspace(this);
-  }
+  pickFolder() { return pickFolder(this); }
+  addWorkspace(name, path) { return addWorkspace(this, name, path); }
+  updateWorkspace(id, name, path) { return updateWorkspace(this, id, name, path); }
+  deleteWorkspace(id) { return deleteWorkspace(this, id); }
+  selectWorkspace(ws) { return selectWorkspace(this, ws); }
+  renderWorkspaces() { return renderWorkspaces(this); }
+  getActiveWorkspace() { return getActiveWorkspace(this); }
 
   // Tabs
-  createTab(workspace, type = "terminal", initOptions = {}) {
-    return createTab(this, workspace, type, initOptions);
-  }
-
-  switchTab(tabId) {
-    return switchTab(this, tabId);
-  }
-
-  async closeTab(tabId) {
-    return closeTab(this, tabId);
-  }
-
-  renameTab(tabId) {
-    return renameTab(this, tabId);
-  }
-
-  restartActiveTab() {
-    return restartActiveTab(this);
-  }
-
-  clearActiveTab() {
-    return clearActiveTab(this);
-  }
-
-  sendInputToActive(text) {
-    return sendInputToActive(this, text);
-  }
-
-  renderTabs() {
-    return renderTabs(this);
-  }
-
-  renderStatusBadge() {
-    return renderStatusBadge(this);
-  }
-
-  renderCwd() {
-    return renderCwd(this);
-  }
+  createTab(workspace, type = "terminal", initOptions = {}) { return createTab(this, workspace, type, initOptions); }
+  switchTab(tabId) { return switchTab(this, tabId); }
+  closeTab(tabId) { return closeTab(this, tabId); }
+  renameTab(tabId) { return renameTab(this, tabId); }
+  restartActiveTab() { return restartActiveTab(this); }
+  clearActiveTab() { return clearActiveTab(this); }
+  sendInputToActive(text) { return sendInputToActive(this, text); }
+  renderTabs() { return renderTabs(this); }
+  renderStatusBadge() { return renderStatusBadge(this); }
+  renderCwd() { return renderCwd(this); }
 
   recordClosedTab(tab) {
     if (!tab) return;
@@ -371,6 +331,12 @@ export class StateManager {
     return disposeImageInstance(tabId);
   }
 
+  // Views - Kanban / Agent Board
+  mountKanbanInstance(tab) { return mountKanbanInstance(this, tab); }
+  renderAgentsSidebarPanel() { return renderAgentsSidebarPanel(this); }
+  splitActiveTerminal() { return splitActiveTerminal(this); }
+  closeSplitPane(tab) { return closeSplitPane(this, tab); }
+
   // Explorer
   loadGitignore() {
     return loadGitignore(this);
@@ -400,46 +366,25 @@ export class StateManager {
     return loadExplorer(this, forceRefresh);
   }
 
+  refreshGitStatusBadges() {
+    return refreshGitStatusBadges(this);
+  }
+
   buildTreeNode(item, level) {
     return buildTreeNode(this, item, level);
   }
 
-  openFileInWorkbench(filePath, revealLine = null) {
-    return openFileInWorkbench(this, filePath, revealLine);
-  }
-
-  previewFile(filePath) {
-    return previewFile(this, filePath);
-  }
-
-  triggerExplorerNew(isDir = false) {
-    return triggerExplorerNew(this, isDir);
-  }
-
-  collapseAllFolders() {
-    return collapseAllFolders(this);
-  }
+  openFileInWorkbench(filePath, revealLine = null) { return openFileInWorkbench(this, filePath, revealLine); }
+  previewFile(filePath) { return previewFile(this, filePath); }
+  triggerExplorerNew(isDir = false) { return triggerExplorerNew(this, isDir); }
+  collapseAllFolders() { return collapseAllFolders(this); }
 
   // Git
-  fetchGitStatusData() {
-    return fetchGitStatusData(this);
-  }
-
-  loadGitStatus() {
-    return loadGitStatus(this);
-  }
-
-  expandGitItems(repoPath, items) {
-    return expandGitItems(this, repoPath, items);
-  }
-
-  buildGitTree(files) {
-    return buildGitTree(files);
-  }
-
-  renderGitTreeNode(node, sectionKey, level, isStaged, repoPath) {
-    return renderGitTreeNode(this, node, sectionKey, level, isStaged, repoPath);
-  }
+  fetchGitStatusData() { return fetchGitStatusData(this); }
+  loadGitStatus() { return loadGitStatus(this); }
+  expandGitItems(repoPath, items) { return expandGitItems(this, repoPath, items); }
+  buildGitTree(files) { return buildGitTree(files); }
+  renderGitTreeNode(node, sectionKey, level, isStaged, repoPath) { return renderGitTreeNode(this, node, sectionKey, level, isStaged, repoPath); }
 
   renderGitSection(title, files, isStaged, repoPath) {
     return renderGitSection(this, title, files, isStaged, repoPath);

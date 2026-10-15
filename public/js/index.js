@@ -1,4 +1,6 @@
 import { openBranchPicker } from "./git/branch-picker.js";
+import { openWorktreePicker } from "./git/worktree-picker.js";
+import { initPortsMonitor } from "./ports.js";
 import { syncGitChanges, showGitMoreMenu } from "./git/actions-menu.js";
 import { getSearchController } from "./search.js";
 import { initQuickOpen, openQuickOpen } from "./quick_open.js";
@@ -6,12 +8,15 @@ import { StateManager } from "./state.js";
 import { setupSidebarResizers } from "./layout.js";
 import { initContextMenuEvents, showExplorerContextMenu } from "./explorer-menu.js";
 import { initTabMenuEvents } from "./tab-menu.js";
-import { syncBrowserOverlayVisibility } from "./views/browser.js";
+import { syncBrowserOverlayVisibility, updateBrowserBounds } from "./views/browser.js";
+import { writeToTerminal, flushTerminalWrite } from "./views/terminal.js";
+import { tauriInvoke } from "./api.js";
 
 // Global App Initialization
 window.addEventListener("DOMContentLoaded", () => {
   const app = new StateManager();
   setupSidebarResizers(app);
+  initPortsMonitor(app);
 
   // Sidebar toggle
   document.getElementById("toggle-sidebar-btn")?.addEventListener("click", () => {
@@ -40,7 +45,15 @@ window.addEventListener("DOMContentLoaded", () => {
       newTabMenu?.classList.remove("open");
       syncBrowserOverlayVisibility(app);
 
-      if (action === "new-terminal") {
+      if (action === "new-claude") {
+        app.createTab(null, "terminal").then((t) => {
+          setTimeout(() => app.sendInputToActive("claude\n"), 150);
+        });
+      } else if (action === "new-agent-worktree") {
+        openWorktreePicker(app);
+      } else if (action === "new-kanban") {
+        app.createTab(null, "kanban", { title: "Agent Board" });
+      } else if (action === "new-terminal") {
         app.createTab(null, "terminal");
       } else if (action === "new-browser") {
         app.createTab(null, "browser", { url: "" });
@@ -84,6 +97,13 @@ window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("rs-tab-search")?.addEventListener("click", () => {
     app.switchRightPanel("search");
   });
+  document.getElementById("rs-tab-agents")?.addEventListener("click", () => {
+    app.switchRightPanel("agents");
+  });
+  document.getElementById("rs-agents-open-board")?.addEventListener("click", () => {
+    const ws = app.getActiveWorkspace();
+    app.createTab(ws, "kanban", { title: "Agent Board" });
+  });
 
   // Refresh buttons
   document.getElementById("rs-explorer-refresh")?.addEventListener("click", () => {
@@ -108,6 +128,9 @@ window.addEventListener("DOMContentLoaded", () => {
   });
   document.getElementById("rs-git-branch")?.addEventListener("click", () => {
     openBranchPicker(app);
+  });
+  document.getElementById("rs-git-worktree")?.addEventListener("click", () => {
+    openWorktreePicker(app);
   });
   document.getElementById("rs-git-sync")?.addEventListener("click", () => {
     syncGitChanges(app);
@@ -284,6 +307,26 @@ window.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    // Terminal split shortcut: Cmd/Ctrl + D
+    if (!e.shiftKey && !e.altKey && lowerKey === "d") {
+      const activeTab = app.tabs.find((t) => t.id === app.activeTabId);
+      if (activeTab && activeTab.type === "terminal") {
+        e.preventDefault();
+        e.stopPropagation();
+        app.splitActiveTerminal();
+        return;
+      }
+    }
+
+    // Agents viewlet shortcut: Cmd/Ctrl + Shift + A
+    if (e.shiftKey && !e.altKey && lowerKey === "a") {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!app.isRightSidebarOpen) app.toggleRightSidebar(true);
+      app.switchRightPanel("agents");
+      return;
+    }
+
     // Git viewlet shortcut: Cmd/Ctrl + Shift + G
     if (e.shiftKey && !e.altKey && lowerKey === "g") {
       e.preventDefault();
@@ -421,13 +464,32 @@ window.addEventListener("DOMContentLoaded", () => {
   getSearchController(app);
   initQuickOpen(app);
 
-  // Flush active terminal buffer on visibility restore
+  // Visibility change handling: hide/show webview browser & flush terminal buffer
   document.addEventListener("visibilitychange", () => {
-    if (!document.hidden && app.activeTabId) {
-      const session = app.terminalSessions.get(app.activeTabId);
-      if (session && session.buffer) {
-        session.term.write(session.buffer);
-        session.buffer = "";
+    const activeTab = app.tabs?.find((t) => t.id === app.activeTabId);
+    const session = app.terminalSessions?.get(app.activeTabId) || activeTab;
+    const isBrowser = (session && session.type === "browser") || (activeTab && activeTab.type === "browser");
+
+    if (document.hidden) {
+      if (isBrowser && app.activeTabId) {
+        tauriInvoke("browser_set_visible", { tabId: app.activeTabId, visible: false }).catch(() => {});
+      }
+    } else {
+      if (isBrowser && app.activeTabId) {
+        tauriInvoke("browser_set_visible", { tabId: app.activeTabId, visible: true }).catch(() => {});
+        updateBrowserBounds(app);
+      } else if (app.activeTabId) {
+        const terminalSession = app.terminalSessions.get(app.activeTabId);
+        if (terminalSession) {
+          if (terminalSession.buffer) {
+            const buffered = Array.isArray(terminalSession.buffer) ? terminalSession.buffer.join("") : terminalSession.buffer;
+            terminalSession.buffer = Array.isArray(terminalSession.buffer) ? [] : "";
+            if (buffered) {
+              writeToTerminal(terminalSession, buffered);
+            }
+          }
+          flushTerminalWrite(terminalSession);
+        }
       }
     }
   });

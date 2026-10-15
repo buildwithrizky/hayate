@@ -1,5 +1,6 @@
 import { tauriInvoke, sendWs } from "../api.js";
 import { escapeHtml } from "../state.js";
+import { updateTabAgentStatus, extractOscTitle } from "../agent-status.js";
 
 export const TERMINAL_KEY_SEQUENCES = {
   HOME: "\x01",      // Ctrl+A (Cmd+ArrowLeft)
@@ -100,7 +101,7 @@ export function mountTerminalInstance(state, tab) {
     fontSize: 13,
     lineHeight: 1.25,
     convertEol: false,
-    allowTransparency: true,
+    allowTransparency: false,
     macOptionIsMeta: true
   });
 
@@ -111,11 +112,47 @@ export function mountTerminalInstance(state, tab) {
   }
   term.open(container);
 
+  // Accelerated terminal renderer with fallback: WebGL -> Canvas -> DOM
+  let renderAddon = null;
+  const WebglAddonClass = window.WebglAddon?.WebglAddon || window.WebglAddon;
+  const CanvasAddonClass = window.CanvasAddon?.CanvasAddon || window.CanvasAddon;
+
+  const tryCanvasRenderer = () => {
+    if (!CanvasAddonClass) return null;
+    try {
+      const addon = new CanvasAddonClass();
+      term.loadAddon(addon);
+      return addon;
+    } catch (canvasErr) {
+      console.warn("Terminal CanvasAddon init failed:", canvasErr);
+      return null;
+    }
+  };
+
+  if (WebglAddonClass) {
+    try {
+      const webglAddon = new WebglAddonClass();
+      webglAddon.onContextLoss(() => {
+        try {
+          webglAddon.dispose();
+        } catch {}
+        renderAddon = tryCanvasRenderer();
+      });
+      term.loadAddon(webglAddon);
+      renderAddon = webglAddon;
+    } catch (webglErr) {
+      console.warn("Terminal WebglAddon init failed, falling back to CanvasAddon:", webglErr);
+      renderAddon = tryCanvasRenderer();
+    }
+  } else {
+    renderAddon = tryCanvasRenderer();
+  }
+
   term.attachCustomKeyEventHandler((e) => {
     if (e.type === "keydown") {
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
         const key = e.key.toLowerCase();
-        if (key === "t" || key === "w" || key === "r") {
+        if (key === "t" || key === "w" || key === "r" || key === "d") {
           return false;
         }
       }
@@ -180,6 +217,11 @@ export function mountTerminalInstance(state, tab) {
       sessionId: tab.id,
       data
     });
+  });
+
+  // Track terminal OSC title changes for agent detection
+  term.onTitleChange((title) => {
+    updateTabAgentStatus(state, tab.id, title);
   });
 
   // Helper: show/hide/click terminal image popover
@@ -397,11 +439,62 @@ export function mountTerminalInstance(state, tab) {
   state.terminalSessions.set(tab.id, {
     term,
     fitAddon,
+    renderAddon,
     container,
     resizeObserver,
     windowPasteHandler,
     lastCols: 0,
     lastRows: 0,
-    resizeTimer: null
+    resizeTimer: null,
+    writeBuffer: "",
+    flushRafId: null,
+    tabId: tab.id,
+    state
   });
+}
+
+const WRITE_FLUSH_THRESHOLD_BYTES = 65536;
+
+export function flushTerminalWrite(session) {
+  if (!session) return;
+  if (session.flushRafId !== null) {
+    if (typeof cancelAnimationFrame === "function") {
+      cancelAnimationFrame(session.flushRafId);
+    } else {
+      clearTimeout(session.flushRafId);
+    }
+    session.flushRafId = null;
+  }
+  if (!session.writeBuffer) return;
+  const chunk = session.writeBuffer;
+  session.writeBuffer = "";
+  session.term?.write(chunk);
+}
+
+export function writeToTerminal(session, text) {
+  if (!session || !session.term || !text) return;
+
+  if (text.includes("\x1b]")) {
+    const osc = extractOscTitle(text);
+    if (osc && session.state && session.tabId) {
+      updateTabAgentStatus(session.state, session.tabId, osc);
+    }
+  }
+
+  session.writeBuffer = (session.writeBuffer || "") + text;
+  if (session.writeBuffer.length >= WRITE_FLUSH_THRESHOLD_BYTES) {
+    flushTerminalWrite(session);
+    return;
+  }
+
+  if (session.flushRafId === null) {
+    const scheduleFn = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (fn) => setTimeout(fn, 16);
+    session.flushRafId = scheduleFn(() => {
+      session.flushRafId = null;
+      if (!session.writeBuffer) return;
+      const chunk = session.writeBuffer;
+      session.writeBuffer = "";
+      session.term?.write(chunk);
+    });
+  }
 }

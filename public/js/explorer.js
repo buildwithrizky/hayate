@@ -135,6 +135,46 @@ export function getFolderGitStatus(state, folderPath) {
   return null;
 }
 
+// Partial git status refresh on existing explorer DOM without destroying tree
+export function refreshGitStatusBadges(state) {
+  const treeEl = document.getElementById("rs-files-tree");
+  if (!treeEl) return;
+  const rows = treeEl.querySelectorAll(".rs-file-item");
+  if (rows.length === 0) return;
+
+  const gitClasses = ["git-M", "git-A", "git-D", "git-R", "git-C", "git-U", "git-?"];
+
+  rows.forEach((row) => {
+    const path = row.getAttribute("data-path");
+    const isDir = row.getAttribute("data-isdir") === "true";
+    if (!path) return;
+
+    gitClasses.forEach((cls) => row.classList.remove(cls));
+
+    const gitStatus = isDir ? getFolderGitStatus(state, path) : getFileGitStatus(state, path);
+    if (gitStatus) {
+      row.classList.add(`git-${gitStatus}`);
+    }
+
+    const badgeEl = row.querySelector(".rs-git-badge");
+    const isIgnored = row.classList.contains("is-ignored");
+
+    if (badgeEl && !isIgnored) {
+      if (gitStatus) {
+        badgeEl.className = `rs-git-badge ${gitStatus}`;
+        badgeEl.textContent = gitStatus;
+      } else {
+        badgeEl.remove();
+      }
+    } else if (!badgeEl && gitStatus && !isIgnored) {
+      const badge = document.createElement("span");
+      badge.className = `rs-git-badge ${gitStatus}`;
+      badge.textContent = gitStatus;
+      row.appendChild(badge);
+    }
+  });
+}
+
 export async function loadExplorer(state, forceRefresh = false) {
   const ws = state.getActiveWorkspace();
   const treeEl = document.getElementById("rs-files-tree");

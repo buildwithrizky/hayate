@@ -28,24 +28,16 @@ High-performance, lightweight developer workspace and terminal harness built on 
 
 ---
 
-## Installation
+## Installation (macOS)
 
-### macOS (Apple Silicon via Homebrew)
-
-```bash
-brew tap buildwithrizky/tap
-brew install --cask hayate
-```
-
-### Windows (via WinGet)
-
-```powershell
-winget install buildwithrizky.Hayate
-```
-
-### Direct Download
-
-Download pre-built `.dmg` from [GitHub Releases](https://github.com/buildwithrizky/hayate/releases).
+1. Download `Hayate_<version>_aarch64.zip` from [GitHub Releases](https://github.com/buildwithrizky/hayate/releases).
+2. Extract file zip, drag `Hayate.app` ke folder `/Applications`.
+3. Jika muncul warning Gatekeeper ("damaged" / "developer cannot be verified" karena belum ada Apple Developer ID):
+   - Klik kanan `Hayate.app` > pilih **Open** > klik **Open Anyway**.
+   - Atau jalankan di terminal:
+     ```bash
+     xattr -cr /Applications/Hayate.app
+     ```
 
 ---
 

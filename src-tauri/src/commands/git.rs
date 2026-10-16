@@ -303,7 +303,11 @@ pub fn parse_worktree_list(output: &str) -> Vec<WorktreeItem> {
     let mut is_first = true;
 
     for block in blocks {
-        let lines: Vec<&str> = block.lines().map(|l| l.trim()).filter(|l| !l.is_empty()).collect();
+        let lines: Vec<&str> = block
+            .lines()
+            .map(|l| l.trim())
+            .filter(|l| !l.is_empty())
+            .collect();
         if lines.is_empty() {
             continue;
         }
@@ -320,14 +324,18 @@ pub fn parse_worktree_list(output: &str) -> Vec<WorktreeItem> {
                 head = h.trim().to_string();
             } else if let Some(b) = line.strip_prefix("branch ") {
                 let stripped = b.trim();
-                branch = stripped.strip_prefix("refs/heads/").unwrap_or(stripped).to_string();
+                branch = stripped
+                    .strip_prefix("refs/heads/")
+                    .unwrap_or(stripped)
+                    .to_string();
             } else if line == "bare" {
                 is_bare = true;
             }
         }
 
         if !path.is_empty() {
-            let is_agent_scratch = path.contains(".claude/worktrees") || path.contains(".gsd-workspaces");
+            let is_agent_scratch =
+                path.contains(".claude/worktrees") || path.contains(".gsd-workspaces");
             worktrees.push(WorktreeItem {
                 path,
                 head,

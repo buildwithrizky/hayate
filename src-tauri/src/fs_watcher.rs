@@ -55,7 +55,9 @@ fn is_noisy(path: &Path) -> bool {
 
     path.file_name()
         .and_then(|n| n.to_str())
-        .is_some_and(|name| name.ends_with('~') || name.ends_with(".tmp") || name.ends_with(".lock"))
+        .is_some_and(|name| {
+            name.ends_with('~') || name.ends_with(".tmp") || name.ends_with(".lock")
+        })
 }
 
 struct ActiveWatch {

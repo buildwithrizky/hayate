@@ -35,8 +35,7 @@ pub fn parse_lsof_ports(output: &str) -> Vec<ListeningPort> {
         if let Some(colon_pos) = addr_candidate.rfind(':') {
             let port_str = &addr_candidate[colon_pos + 1..];
             if let Ok(port) = port_str.parse::<u16>() {
-                if !seen_ports.contains(&port) {
-                    seen_ports.insert(port);
+                if seen_ports.insert(port) {
                     ports.push(ListeningPort {
                         port,
                         pid,
@@ -57,7 +56,7 @@ pub async fn list_active_ports() -> Result<Vec<ListeningPort>, String> {
     #[cfg(windows)]
     {
         let output = silent_command("netstat")
-            .args(&["-ano", "-p", "tcp"])
+            .args(["-ano", "-p", "tcp"])
             .output()
             .await
             .map_err(|e| format!("netstat exec error: {e}"))?;
@@ -67,21 +66,20 @@ pub async fn list_active_ports() -> Result<Vec<ListeningPort>, String> {
         for line in stdout.lines() {
             if line.contains("LISTENING") {
                 let parts: Vec<&str> = line.split_whitespace().collect();
-                if parts.len() >= 5 {
-                    if let (Some(addr), Ok(pid)) = (parts.get(1), parts[4].parse::<u32>()) {
-                        if let Some(pos) = addr.rfind(':') {
-                            if let Ok(port) = addr[pos + 1..].parse::<u16>() {
-                                if !seen.contains(&port) {
-                                    seen.insert(port);
-                                    ports.push(ListeningPort {
-                                        port,
-                                        pid,
-                                        command: "process".into(),
-                                        address: addr.to_string(),
-                                    });
-                                }
-                            }
-                        }
+                let maybe_info = parts.get(1).and_then(|addr| {
+                    let pid = parts.get(4)?.parse::<u32>().ok()?;
+                    let pos = addr.rfind(':')?;
+                    let port = addr[pos + 1..].parse::<u16>().ok()?;
+                    Some((addr, pid, port))
+                });
+                if let Some((addr, pid, port)) = maybe_info {
+                    if seen.insert(port) {
+                        ports.push(ListeningPort {
+                            port,
+                            pid,
+                            command: "process".into(),
+                            address: addr.to_string(),
+                        });
                     }
                 }
             }
@@ -93,7 +91,7 @@ pub async fn list_active_ports() -> Result<Vec<ListeningPort>, String> {
     #[cfg(not(windows))]
     {
         let output = silent_command("lsof")
-            .args(&["-iTCP", "-sTCP:LISTEN", "-n", "-P"])
+            .args(["-iTCP", "-sTCP:LISTEN", "-n", "-P"])
             .output()
             .await
             .map_err(|e| format!("lsof exec error: {e}"))?;
@@ -112,7 +110,7 @@ pub async fn kill_port_process(pid: u32) -> Result<(), String> {
     #[cfg(windows)]
     {
         silent_command("taskkill")
-            .args(&["/F", "/PID", &pid.to_string()])
+            .args(["/F", "/PID", &pid.to_string()])
             .output()
             .await
             .map_err(|e| format!("taskkill error: {e}"))?;
@@ -121,7 +119,7 @@ pub async fn kill_port_process(pid: u32) -> Result<(), String> {
     #[cfg(not(windows))]
     {
         silent_command("kill")
-            .args(&["-9", &pid.to_string()])
+            .args(["-9", &pid.to_string()])
             .output()
             .await
             .map_err(|e| format!("kill error: {e}"))?;

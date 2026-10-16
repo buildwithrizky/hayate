@@ -34,7 +34,11 @@ pub fn parse_lsof_ports(output: &str) -> Vec<ListeningPort> {
 
         if let Some(colon_pos) = addr_candidate.rfind(':') {
             let port_str = &addr_candidate[colon_pos + 1..];
-            if let Some(port) = port_str.parse::<u16>().ok().filter(|&p| seen_ports.insert(p)) {
+            if let Some(port) = port_str
+                .parse::<u16>()
+                .ok()
+                .filter(|&p| seen_ports.insert(p))
+            {
                 ports.push(ListeningPort {
                     port,
                     pid,
